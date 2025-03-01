@@ -1,3 +1,49 @@
+---
+name: dacpac-ci
+on:
+  workflow_dispatch:
+    inputs:
+      dacpac_solution_dir:
+        description: Must specify project directory (comma-separated)
+        default: 'Project1,Project2'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      directories: ${{ steps.set-matrix.outputs.directories }}
+    steps:
+      - name: Set Project Directories
+        id: set-matrix
+        run: |
+          DIRS=$(echo '${{ inputs.dacpac_solution_dir }}' | tr ',' '\n' | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "directories=$DIRS" >> $GITHUB_OUTPUT
+        shell: bash
+
+  build:
+    needs: prepare-matrix
+    strategy:
+      matrix:
+        directory: ${{ fromJSON(needs.prepare-matrix.outputs.directories) }}
+    uses: ./.github/workflows/ci.yml # This is your reusable workflow
+    with:
+      project-type: dacpac
+      dacpac_solution_dir: ${{ matrix.directory }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    secrets: inherit
+
+
+---
 name: dacpac-ci
 on:
   workflow_dispatch:
