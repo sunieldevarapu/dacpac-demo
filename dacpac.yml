@@ -1,0 +1,42 @@
+name: dacpac-ci
+on:
+  workflow_dispatch:
+    inputs:
+      dacpac_solution_dir:
+        description: Must specify project directory
+        default: 'Project1,Project2'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        directory: ${{ fromJSON('["Project1","Project2"]') }} # Example static array, this will be replaced dynamically
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Project Directories
+        run: echo "DIRECTORIES=${{ inputs.dacpac_solution_dir }}" >> $GITHUB_ENV
+
+      - name: Parse Project Directories
+        id: parse_dirs
+        run: echo "::set-output name=directories::$(echo $DIRECTORIES | sed 's/,/ /g')"
+
+      - name: Run Build for ${{ matrix.directory }}
+        uses: ./.github/workflows/ci.yml
+        with:
+          project-type: dacpac
+          dacpac_solution_dir: ${{ matrix.directory }}
+        permissions:
+          contents: read
+          id-token: write
+          packages: write
+        secrets: inherit
