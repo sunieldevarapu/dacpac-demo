@@ -29,14 +29,10 @@ jobs:
 
   build-and-pack:
     needs: prepare-matrix
+    runs-on: windows-latest
     strategy:
       matrix:
         directory: ${{ fromJSON(needs.prepare-matrix.outputs.directories) }}
-    uses: other-repository/.github/workflows/ci.yml@main
-    with:
-      project-type: dacpac
-      dacpac_solution_dir: ${{ matrix.directory }}
-    runs-on: windows-latest #runs the reusable workflow on windows.
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
