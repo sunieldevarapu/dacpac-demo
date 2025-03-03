@@ -23,7 +23,7 @@ jobs:
         id: set-matrix
         run: |
           $dirs = "${{ inputs.dacpac_solution_dir }}" -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
-          $json = ConvertTo-Json -InputObject $dirs -Compress
+          $json = ConvertTo-Json -InputObject @($dirs) -Compress
           echo "directories=$json" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         shell: pwsh
 
@@ -43,7 +43,7 @@ jobs:
     secrets: inherit
 
   octo-pack:
-    needs: build
+    needs: prepare-matrix
     strategy:
       matrix:
         directory: ${{ fromJSON(needs.prepare-matrix.outputs.directories) }}
@@ -57,7 +57,7 @@ jobs:
         shell: pwsh
 
       - name: Create Artifacts Directory
-        run: New-Item -ItemType Directory -Path artifacts
+        run: New-Item -ItemType Directory -Path artifacts -Force
         shell: pwsh
 
       - name: Octo Pack
