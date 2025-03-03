@@ -1,0 +1,68 @@
+name: dacpac-ci
+on:
+  workflow_dispatch:
+    inputs:
+      dacpac_solution_dir:
+        description: Must specify project directory (comma-separated)
+        default: 'Project1,Project2'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      directories: ${{ steps.set-matrix.outputs.directories }}
+    steps:
+      - name: Set Project Directories
+        id: set-matrix
+        run: |
+          DIRS=$(echo '${{ inputs.dacpac_solution_dir }}' | tr ',' '\n' | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "directories=$DIRS" >> $GITHUB_OUTPUT
+        shell: bash
+
+  build:
+    needs: prepare-matrix
+    strategy:
+      matrix:
+        directory: ${{ fromJSON(needs.prepare-matrix.outputs.directories) }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Octopus CLI
+        run: |
+          choco install octopusdeploy-cli
+        shell: powershell
+
+      - name: Build DACPAC
+        run: |
+          echo "** Building DACPAC: ${{ matrix.directory }} **"
+          $projectFile = "${{ github.workspace }}\\${{ matrix.directory }}\\${{ matrix.directory }}.sqlproj"
+          $dacpac = "${{ github.workspace }}\\${{ matrix.directory }}\\bin\\Debug\\${{ matrix.directory }}.dacpac"
+          $publishProfile = "${{ github.workspace }}\\${{ matrix.directory }}\\${{ matrix.directory }}.publish.xml"
+          $SQL_OUT = "${{ github.workspace }}\\SQL_OUT"
+
+          mkdir $SQL_OUT -ErrorAction SilentlyContinue
+          msbuild $projectFile -property:Configuration=Debug
+          Copy-Item $dacpac -Destination $SQL_OUT -Force
+          Copy-Item $publishProfile -Destination $SQL_OUT -Force
+        shell: powershell
+
+      - name: Octo Pack
+        run: |
+          octo pack --id="${{ matrix.directory }}.SQL" --version="1.0.${{ github.run_number }}" --outFolder="${{ github.workspace }}\\artifacts" --basePath="${{ github.workspace }}\\SQL_OUT" --format=zip
+        shell: powershell
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.directory }}.SQL
+          path: ${{ github.workspace }}\artifacts\*.zip
