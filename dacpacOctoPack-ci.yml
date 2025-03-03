@@ -43,11 +43,11 @@ jobs:
     secrets: inherit
 
   octo-pack:
-    needs: build
-    runs-on: windows-latest
+    needs: prepare-matrix
     strategy:
       matrix:
         directory: ${{ fromJSON(needs.prepare-matrix.outputs.directories) }}
+    runs-on: windows-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -62,7 +62,9 @@ jobs:
 
       - name: Octo Pack
         run: |
-          octo pack --id="${{ matrix.directory }}.SQL" --version="1.0.${{ github.run_number }}" --outFolder="artifacts" --basePath="${{ github.workspace }}" --format=zip
+          $directory = "${{ matrix.directory }}"
+          echo "Packing project: $directory"
+          octo pack --id="$directory.SQL" --version="1.0.${{ github.run_number }}" --outFolder="artifacts" --basePath="$env:GITHUB_WORKSPACE\$directory" --format=zip
         shell: powershell
 
       - name: Upload Artifact
