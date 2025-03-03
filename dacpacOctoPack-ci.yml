@@ -23,7 +23,7 @@ jobs:
         id: set-matrix
         run: |
           $dirs = "${{ inputs.dacpac_solution_dir }}" -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
-          $json = $dirs | ConvertTo-Json -Compress
+          $json = ConvertTo-Json -InputObject $dirs -Compress
           echo "directories=$json" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         shell: pwsh
 
@@ -43,7 +43,7 @@ jobs:
     secrets: inherit
 
   octo-pack:
-    needs: prepare-matrix
+    needs: build
     strategy:
       matrix:
         directory: ${{ fromJSON(needs.prepare-matrix.outputs.directories) }}
@@ -54,21 +54,21 @@ jobs:
 
       - name: Install Octopus CLI
         run: choco install octopusdeploy-cli
-        shell: powershell
+        shell: pwsh
 
       - name: Create Artifacts Directory
-        run: mkdir artifacts
-        shell: powershell
+        run: New-Item -ItemType Directory -Path artifacts
+        shell: pwsh
 
       - name: Octo Pack
         run: |
           $directory = "${{ matrix.directory }}"
           echo "Packing project: $directory"
-          octo pack --id="$directory.SQL" --version="1.0.${{ github.run_number }}" --outFolder="artifacts" --basePath="$env:GITHUB_WORKSPACE\$directory" --format=zip
-        shell: powershell
+          octo pack --id="$directory-SQL" --version="1.0.${{ github.run_number }}" --outFolder="artifacts" --basePath="$env:GITHUB_WORKSPACE\$directory" --format=zip
+        shell: pwsh
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.directory }}.SQL
+          name: ${{ matrix.directory }}-SQL
           path: artifacts/*.zip
