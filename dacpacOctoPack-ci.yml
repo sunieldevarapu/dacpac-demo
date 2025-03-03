@@ -36,30 +36,28 @@ jobs:
     with:
       project-type: dacpac
       dacpac_solution_dir: ${{ matrix.directory }}
-    jobs:
-      build-and-pack-steps:
-        runs-on: windows-latest
-        steps:
-          - name: Checkout Repository
-            uses: actions/checkout@v4
+    runs-on: windows-latest #runs the reusable workflow on windows.
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-          - name: Install Octopus CLI
-            run: choco install octopusdeploy-cli
-            shell: pwsh
+      - name: Install Octopus CLI
+        run: choco install octopusdeploy-cli
+        shell: pwsh
 
-          - name: Create Artifacts Directory
-            run: New-Item -ItemType Directory -Path artifacts -Force
-            shell: pwsh
+      - name: Create Artifacts Directory
+        run: New-Item -ItemType Directory -Path artifacts -Force
+        shell: pwsh
 
-          - name: Octo Pack
-            run: |
-              $directory = "${{ matrix.directory }}"
-              echo "Packing project: $directory"
-              octo pack --id="$directory-SQL" --version="1.0.${{ github.run_number }}" --outFolder="artifacts" --basePath="$env:GITHUB_WORKSPACE\$directory" --format=zip
-            shell: pwsh
+      - name: Octo Pack
+        run: |
+          $directory = "${{ matrix.directory }}"
+          echo "Packing project: $directory"
+          octo pack --id="$directory-SQL" --version="1.0.${{ github.run_number }}" --outFolder="artifacts" --basePath="$env:GITHUB_WORKSPACE\$directory" --format=zip
+        shell: pwsh
 
-          - name: Upload Artifact
-            uses: actions/upload-artifact@v4
-            with:
-              name: ${{ matrix.directory }}-SQL
-              path: artifacts/*.zip
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.directory }}-SQL
+          path: artifacts/*.zip
