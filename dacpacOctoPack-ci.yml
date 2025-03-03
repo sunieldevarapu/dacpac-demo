@@ -1,11 +1,21 @@
-name: dacpac-ci
+name: dacpac-ci-remote
+
 on:
   workflow_dispatch:
     inputs:
+      remote_repo:
+        description: Remote repository (owner/repo) to checkout
+        required: true
+        type: string
       dacpac_solution_dir:
-        description: Must specify project directory (comma-separated)
+        description: Project directories (comma-separated, relative to remote repo)
         default: 'Project1,Project2'
         required: true
+        type: string
+      remote_branch:
+        description: Branch of the remote repository to checkout
+        default: main
+        required: false
         type: string
 
 permissions:
@@ -32,15 +42,18 @@ jobs:
     strategy:
       matrix:
         directory: ${{ fromJSON(needs.prepare-matrix.outputs.directories) }}
-    uses: other-repository/.github/workflows/ci.yml@main
-    with:
-      project-type: dacpac
-      dacpac_solution_dir: ${{ matrix.directory }}
+    runs-on: windows-latest
     permissions:
       id-token: write
       contents: read
       packages: write
     steps:
+      - name: Checkout Remote Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.remote_repo }}
+          ref: ${{ inputs.remote_branch }}
+
       - name: Install Octopus CLI
         run: choco install octopusdeploy-cli
         shell: pwsh
