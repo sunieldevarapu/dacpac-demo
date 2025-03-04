@@ -1,0 +1,63 @@
+name: Build SQL Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch: # Allows manual triggering
+
+env:
+  ARTIFACTS_DIR: ${{ github.workspace }}/build/artifacts
+  OCT_PACKAGE_NAME: EDS-Medicaid
+  DACPACS: Medicaid.SQL
+  PACKAGE_FORMAT: zip
+
+jobs:
+  build_sql:
+    runs-on: windows-latest # Use Windows runner since batch commands are being used
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set Environment Variables
+      run: |
+        echo "SQL_OUT=${{ github.workspace }}\\build\\sql" >> $env:GITHUB_ENV
+      shell: pwsh
+
+    - name: Create SQL Output Directory
+      run: mkdir "${{ env.SQL_OUT }}"
+      shell: cmd
+
+    - name: Build DACPAC Projects
+      run: |
+        echo "*** Building changes from the branch ***"
+        $dacpacs = "${{ env.DACPACS }}".Split(',')
+        foreach ($project in $dacpacs) {
+          echo "** Build DACPAC: $project **"
+          $projectFile = "${{ github.workspace }}\\$project\\$project.sqlproj"
+          $dacpac = "${{ github.workspace }}\\$project\\bin\\Debug\\$project.dacpac"
+          $publishProfile = "${{ github.workspace }}\\$project\\$project.publish.xml"
+
+          msbuild $projectFile -property:Configuration=Debug
+          xcopy "$dacpac" "${{ env.SQL_OUT }}" /y
+          xcopy "$publishProfile" "${{ env.SQL_OUT }}" /y
+        }
+      shell: pwsh
+
+    - name: Install Octopus CLI
+      run: |
+        choco install octopusdeploy-cli -y
+      shell: cmd
+
+    - name: Package Artifacts
+      run: |
+        octo pack --id=${{ env.OCT_PACKAGE_NAME }}.SQL --version=1.0.0 --outFolder=${{ env.ARTIFACTS_DIR }} --basePath=${{ env.SQL_OUT }} --format=${{ env.PACKAGE_FORMAT }}
+      shell: cmd
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: sql-artifacts
+        path: ${{ env.ARTIFACTS_DIR }}
