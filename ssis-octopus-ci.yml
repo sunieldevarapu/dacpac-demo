@@ -1,0 +1,73 @@
+name: Build SSIS Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch: # Manual trigger
+
+env:
+  ARTIFACTS_DIR: ${{ github.workspace }}/build/artifacts
+  OCT_PACKAGE_NAME: EDS-Medicaid
+  SSIS_PROJECTS: Medicaid.SQL
+  SSIS_OUT: ${{ github.workspace }}\build\ssis
+  SSIS_PARAMS: build-assests\Package-Project-Params\
+  PACKAGE_FORMAT: zip
+
+jobs:
+  build_ssis:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set Environment Variables
+      run: |
+        echo "SSIS_OUT=${{ github.workspace }}\build\ssis" >> $env:GITHUB_ENV
+      shell: pwsh
+
+    - name: Create SSIS Output Directory
+      run: mkdir "${{ env.SSIS_OUT }}"
+      shell: cmd
+
+    - name: Install NuGet Packages
+      run: |
+        nuget install packages.config -OutputDirectory packages
+      shell: cmd
+
+    - name: Build SSIS Projects
+      run: |
+        echo "*** Building changes from the branch ***"
+        $ssisProjects = "${{ env.SSIS_PROJECTS }}".Split(',')
+        foreach ($project in $ssisProjects) {
+          echo "** Build SSIS: $project **"
+          $dtproj = "${{ github.workspace }}\$project\$project.dtproj"
+          packages\SSISBuild.2.3.0\tools\ssisbuild.exe "$dtproj" -Configuration "Development" -Protectionlevel DontSaveSensitive -OutputFolder "${{ env.SSIS_OUT }}"
+        }
+      shell: pwsh
+
+    - name: Copy Parameter Files
+      run: |
+        xcopy "${{ env.SSIS_PARAMS }}*.params" "${{ env.SSIS_OUT }}\" /O /X /E /H /K
+        copy PreDeploy.ps1 "${{ env.SSIS_OUT }}\PreDeploy.ps1"
+      shell: cmd
+
+    - name: Install Octopus CLI
+      run: |
+        Invoke-WebRequest -Uri "https://download.octopusdeploy.com/octopus-tools/latest/OctopusTools.msi" -OutFile "OctopusTools.msi"
+        Start-Process msiexec.exe -ArgumentList "/i OctopusTools.msi /quiet /norestart" -Wait
+        octo version
+      shell: pwsh
+
+    - name: Package Artifacts
+      run: |
+        octo pack --id=${{ env.OCT_PACKAGE_NAME }}.SSIS --version=1.0.0 --outFolder="${{ env.ARTIFACTS_DIR }}" --basePath="${{ env.SSIS_OUT }}" --format=${{ env.PACKAGE_FORMAT }}
+      shell: cmd
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ssis-artifacts
+        path: ${{ env.ARTIFACTS_DIR }}
