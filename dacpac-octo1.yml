@@ -47,9 +47,16 @@ jobs:
       shell: pwsh
 
     - name: Install Octopus CLI
-      run: |
-        choco install octopusdeploy-cli -y
-      shell: cmd
+  run: |
+    Invoke-WebRequest -Uri "https://download.octopusdeploy.com/octopus-tools/latest/OctopusTools.msi" -OutFile "OctopusTools.msi"
+    Start-Process msiexec.exe -ArgumentList "/i OctopusTools.msi /quiet /norestart" -Wait
+    octo version
+  shell: pwsh
+
+- name: Verify Octopus CLI Installation
+  run: octo version
+  shell: pwsh
+
 
     - name: Package Artifacts
       run: |
