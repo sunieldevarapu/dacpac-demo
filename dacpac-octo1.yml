@@ -68,3 +68,49 @@ jobs:
       with:
         name: sql-artifacts
         path: ${{ env.ARTIFACTS_DIR }}
+
+
+---
+
+name: Build Pipeline
+
+on:
+  push:
+    branches:
+      - '**' # Trigger on all branches
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  preparation:
+    runs-on: ubuntu-latest # Equivalent to agent any-agent
+    
+    env:
+      BUILD_NUMBER: ${{ github.run_number }}
+      
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Clean Workspace
+        run: rm -rf * || true
+        
+      - name: Get Release Name
+        run: |
+          BRANCH="${{ github.ref }}"
+          BRANCH_NAME=$(basename $BRANCH) # Get branch name without refs/heads/
+          BUILD_NUMBER="${{ env.BUILD_NUMBER }}"
+          
+          if [[ "$BRANCH_NAME" == *"_"* ]]; then
+            PREFIX="${BRANCH_NAME%%_*}"  # Text before _
+            SUFFIX="${BRANCH_NAME#*_}"   # Text after _
+            RELEASE_NAME="${PREFIX}-${BUILD_NUMBER}-${SUFFIX}"
+          else
+            RELEASE_NAME="${BRANCH_NAME}-${BUILD_NUMBER}"
+          fi
+          
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+          
+      - name: Print Release Name
+        run: echo "Release Name: $RELEASE_NAME"
