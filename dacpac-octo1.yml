@@ -114,3 +114,54 @@ jobs:
           
       - name: Print Release Name
         run: echo "Release Name: $RELEASE_NAME"
+
+---
+
+name: Windows Build Pipeline
+
+on:
+  push:
+    branches:
+      - '**' # Trigger on all branches
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  preparation:
+    runs-on: windows-latest # Use Windows agent
+    
+    env:
+      BUILD_NUMBER: ${{ github.run_number }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Clean Workspace
+        run: |
+          if (Test-Path -Path ".") {
+            Get-ChildItem -Recurse | Remove-Item -Force -Recurse
+          }
+        shell: powershell
+
+      - name: Get Release Name
+        run: |
+          $Branch = "${{ github.ref }}"
+          $BranchName = ($Branch -split "/")[-1] # Extract branch name
+          $BuildNumber = "${{ env.BUILD_NUMBER }}"
+          
+          if ($BranchName -like "*_*") {
+            $Prefix = $BranchName.Split("_")[0]
+            $Suffix = $BranchName.Split("_")[1]
+            $ReleaseName = "${Prefix}-${BuildNumber}-${Suffix}"
+          } else {
+            $ReleaseName = "${BranchName}-${BuildNumber}"
+          }
+          
+          echo "RELEASE_NAME=$ReleaseName" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: powershell
+
+      - name: Print Release Name
+        run: echo "Release Name: $env:RELEASE_NAME"
+        shell: powershell
