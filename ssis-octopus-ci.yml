@@ -78,3 +78,10 @@ WHERE country_name="Italy" AND date BETWEEN 'YYYY-MM-DD' and 'YYYY-MM-DD'
       with:
         name: ssis-artifacts
         path: ${{ env.ARTIFACTS_DIR }}
+
+
+SELECT date
+FROM `bigquery-public-data.covid19_open_data.covid19_open_data`
+WHERE country_name="Italy" and cumulative_deceased>DEATH
+ORDER BY date asc
+LIMIT 1
