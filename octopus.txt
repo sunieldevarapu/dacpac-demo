@@ -1,0 +1,124 @@
+The final goal is to create a single GitHub Actions workflow to orchestrate and run this logic in CI.
+
+✅ Step-by-Step Breakdown
+📦 Files You Provided:
+
+Script	Purpose
+octopus_deploy.py	Core logic for querying, scheduling, and canceling Octopus deployments
+service_now.py	ServiceNow integration: retrieves tasks, assigns/unassigns, builds queries
+scheduler.py	Orchestrator script: validates SNOW items, calls Octopus scheduling functions
+🧠 Architecture Overview
+All scripts rely on a shared configuration:
+
+python
+Copy
+Edit
+from cmadevops_deployment_scheduler.config.config import scheduler_config
+They also depend on one another:
+
+scheduler.py calls:
+
+service_now.change_tasks()
+
+octopus_deploy.schedule_release()
+
+service_now.py uses ServiceNow credentials to fetch and assign change tasks
+
+octopus_deploy.py uses Octopus Deploy API credentials
+
+✅ Requirements for GitHub Actions
+🔒 Secrets to Configure (via GitHub Repository → Settings → Secrets)
+
+Secret	Used In	Purpose
+SNOW_BASE_URL	service_now.py	ServiceNow API base URL
+SNOW_USERNAME	service_now.py	SNOW account username
+SNOW_PASSWORD	service_now.py	SNOW account password
+AUTOMATION_USER_ID	service_now.py	SNOW user ID to assign tasks
+ASSIGNMENT_GROUP_ID	service_now.py	SNOW group ID
+OCTOPUS_DEPLOY_API_KEY	octopus_deploy.py	Octopus API key
+OCTOPUS_DEPLOY_BASE_URL	octopus_deploy.py	Octopus API base URL
+PRODUCTION_ENV_ID	scheduler.py → scheduler_config	Octopus environment ID
+✅ Create main.py: Entrypoint Script
+This script should:
+
+Fetch ServiceNow change tasks
+
+Pass them into the schedule() function from scheduler.py
+
+📝 main.py
+python
+Copy
+Edit
+from cmadevops_deployment_scheduler.scheduler import schedule
+from cmadevops_deployment_scheduler.modules.service_now import change_tasks
+
+if __name__ == "__main__":
+    # Fetch all unassigned change tasks
+    snow_items = change_tasks(assigned_to=False)
+    
+    # Schedule them
+    schedule(snow_items)
+✅ Update config/config.py to Use Environment Variables
+python
+Copy
+Edit
+import os
+
+scheduler_config = {
+    "OctopusDeployBaseUrl": os.getenv("OCTOPUS_DEPLOY_BASE_URL"),
+    "OctopusDeployApiKey": os.getenv("OCTOPUS_DEPLOY_API_KEY"),
+    "ProductionEnvironmentId": os.getenv("PRODUCTION_ENV_ID"),
+    "BaseUrl": os.getenv("SNOW_BASE_URL"),
+    "ApiAuthentication": {
+        "Username": os.getenv("SNOW_USERNAME"),
+        "Password": os.getenv("SNOW_PASSWORD")
+    },
+    "QueryChangeTaskEndpoint": "/api/now/table/change_task",
+    "UpdateChangeTaskEndpoint": "/api/now/table/change_task",
+    "AutomationUserId": os.getenv("AUTOMATION_USER_ID"),
+    "ChsDevOpsSoftwareSolutionsId": os.getenv("ASSIGNMENT_GROUP_ID"),
+    "ProjectsEndpoint": "/api/projects",
+    "ReleaseEndpoint": "/api/releases",
+    "DeploymentsEndpoint": "/api/deployments",
+    "TasksEndpoint": "/api/tasks"
+}
+✅ Final GitHub Actions Workflow File
+📄 .github/workflows/full-scheduler.yaml
+yaml
+Copy
+Edit
+name: ServiceNow to Octopus Scheduler
+
+on:
+  workflow_dispatch:  # Manual trigger from GitHub UI
+
+jobs:
+  schedule-deployments:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run deployment scheduler
+        env:
+          OCTOPUS_DEPLOY_API_KEY: ${{ secrets.OCTOPUS_DEPLOY_API_KEY }}
+          OCTOPUS_DEPLOY_BASE_URL: ${{ secrets.OCTOPUS_DEPLOY_BASE_URL }}
+          PRODUCTION_ENV_ID: ${{ secrets.PRODUCTION_ENV_ID }}
+          SNOW_BASE_URL: ${{ secrets.SNOW_BASE_URL }}
+          SNOW_USERNAME: ${{ secrets.SNOW_USERNAME }}
+          SNOW_PASSWORD: ${{ secrets.SNOW_PASSWORD }}
+          AUTOMATION_USER_ID: ${{ secrets.AUTOMATION_USER_ID }}
+          ASSIGNMENT_GROUP_ID: ${{ secrets.ASSIGNMENT_GROUP_ID }}
+        run: |
+          python main.py
