@@ -1,3 +1,54 @@
+---
+
+name: Deployment Scheduler
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  deploy-scheduler:
+    runs-on: ubuntu-latest
+
+    env:
+      # ServiceNow config
+      SNOW_BASE_URL: ${{ secrets.SNOW_BASE_URL }}
+      SNOW_USERNAME: ${{ secrets.SNOW_USERNAME }}
+      SNOW_PASSWORD: ${{ secrets.SNOW_PASSWORD }}
+      SNOW_AUTOMATION_USER_ID: ${{ secrets.SNOW_AUTOMATION_USER_ID }}
+      SNOW_ASSIGNMENT_GROUP_ID: ${{ secrets.SNOW_ASSIGNMENT_GROUP_ID }}
+      SNOW_QUERY_TASK_ENDPOINT: ${{ secrets.SNOW_QUERY_TASK_ENDPOINT }}
+      SNOW_UPDATE_TASK_ENDPOINT: ${{ secrets.SNOW_UPDATE_TASK_ENDPOINT }}
+
+      # Octopus Deploy config
+      OCTOPUS_BASE_URL: ${{ secrets.OCTOPUS_BASE_URL }}
+      OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY }}
+      OCTOPUS_PROJECTS_ENDPOINT: ${{ secrets.OCTOPUS_PROJECTS_ENDPOINT }}
+      OCTOPUS_TASKS_ENDPOINT: ${{ secrets.OCTOPUS_TASKS_ENDPOINT }}
+      OCTOPUS_RELEASE_ENDPOINT: ${{ secrets.OCTOPUS_RELEASE_ENDPOINT }}
+      OCTOPUS_DEPLOYMENTS_ENDPOINT: ${{ secrets.OCTOPUS_DEPLOYMENTS_ENDPOINT }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: pip install requests pytz
+
+    - name: Run ServiceNow unassignment and retrieval
+      run: python service_now.py
+
+    - name: Run Octopus deployment authorization and scheduling
+      run: python octopus_deploy.py
+
+
+---
 name: Octopus Deploy Scheduler
 
 on:
