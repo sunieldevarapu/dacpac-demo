@@ -28,13 +28,13 @@ jobs:
 
     - name: Set environment variables
       run: |
-        echo SNOW_BASE_URL=https://your-instance.service-now.com >> $GITHUB_ENV
-        echo SNOW_USERNAME=your-username >> $GITHUB_ENV
-        echo SNOW_PASSWORD=your-password >> $GITHUB_ENV
-        echo SNOW_AUTOMATION_USER_ID=your-automation-user-id >> $GITHUB_ENV
-        echo SNOW_ASSIGNMENT_GROUP_ID=your-assignment-group-id >> $GITHUB_ENV
-        echo SNOW_QUERY_TASK_ENDPOINT=/api/now/table/change_task >> $GITHUB_ENV
-        echo SNOW_UPDATE_TASK_ENDPOINT=/api/now/table/change_task >> $GITHUB_ENV
+        echo SNOW_BASE_URL=${{ secrets.SNOW_BASE_URL }} >> $GITHUB_ENV
+        echo SNOW_USERNAME=${{ secrets.SNOW_USERNAME }} >> $GITHUB_ENV
+        echo SNOW_PASSWORD=${{ secrets.SNOW_PASSWORD }} >> $GITHUB_ENV
+        echo SNOW_AUTOMATION_USER_ID=${{ secrets.SNOW_AUTOMATION_USER_ID }} >> $GITHUB_ENV
+        echo SNOW_ASSIGNMENT_GROUP_ID=${{ secrets.SNOW_ASSIGNMENT_GROUP_ID }} >> $GITHUB_ENV
+        echo SNOW_QUERY_TASK_ENDPOINT=${{ secrets.SNOW_QUERY_TASK_ENDPOINT }} >> $GITHUB_ENV
+        echo SNOW_UPDATE_TASK_ENDPOINT=${{ secrets.SNOW_UPDATE_TASK_ENDPOINT }} >> $GITHUB_ENV
 
     - name: Execute Python script
       run: python service_now_std.py
