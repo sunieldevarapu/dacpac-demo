@@ -57,20 +57,64 @@ def format_od_time(time_string) -> str:
     )
 
 
+# def scheduled(release_number: str, project_name=str) -> bool:
+#     """
+#     Verifies if a release is scheduled in Octopus Deploy
+#         Parameters:
+#             release_number: Release number from Octopus Deploy
+#     """
+
+#     # retrieve current server tasks
+#     if release_number:
+#         try:
+#             results = requests.get(
+#                 url=f"{scheduler_config['OctopusDeployBaseUrl']}{scheduler_config['TasksEndpoint']}",
+#                 headers={
+#                     "X-Octopus-ApiKey": f"{scheduler_config['OctopusDeployApiKey']}"
+#                 },
+#                 verify=False,
+#             )
+#         except Exception as e:
+#             error_string = str(e)
+#             log(error_string)
+#             return False
+
+#         # we only want to results if code is 200, otherwise return false
+#         if results.status_code == 200:
+#             results = results.json()
+
+#             # find release number in the description if it's found and the state is queued then
+#             # this release is already scheduled so return true
+#             for r in results["Items"]:
+#                 if (
+#                     release_number == extract_release(r["Description"])
+#                     and r["State"] == "Queued"
+#                     and "Release Approval" not in r["Description"]
+#                     and project_name == find_project_name(r["Description"])
+#                 ):
+#                     return True
+#         else:
+#             log(results.text)
+#     return False
+
 def scheduled(release_number: str, project_name=str) -> bool:
     """
     Verifies if a release is scheduled in Octopus Deploy
-        Parameters:
-            release_number: Release number from Octopus Deploy
+    Parameters:
+    release_number: Release number from Octopus Deploy
     """
+    # Hard-coded values
+    octopus_deploy_base_url = "https://your-octopus-deploy-url"
+    tasks_endpoint = "/api/tasks"
+    octopus_api_key = "your-octopus-api-key"
 
     # retrieve current server tasks
     if release_number:
         try:
             results = requests.get(
-                url=f"{scheduler_config['OctopusDeployBaseUrl']}{scheduler_config['TasksEndpoint']}",
+                url=f"{octopus_deploy_base_url}{tasks_endpoint}",
                 headers={
-                    "X-Octopus-ApiKey": f"{scheduler_config['OctopusDeployApiKey']}"
+                    "X-Octopus-ApiKey": octopus_api_key
                 },
                 verify=False,
             )
