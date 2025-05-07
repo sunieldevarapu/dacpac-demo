@@ -503,3 +503,39 @@ def cancel_deployment(id: str) -> bool:
             return False
     else:
         return False
+-------------------------------------------------------------------------------------------------------
+
+# Import necessary modules
+from datetime import datetime
+
+# Sample data for function calls
+time_string = "2023-05-07T12:00:00+0000"
+release_id = "Release-1"
+utc_time = "2023-05-07 12:00:00"
+short_description = "Deploy ProjectX version 1.2.3"
+project_name = "ProjectX"
+
+# Call format_od_time function
+formatted_time = format_od_time(time_string)
+print(f"Formatted Time: {formatted_time}")
+
+# Call promotable function
+is_promotable = promotable(release_id)
+print(f"Is Promotable: {is_promotable}")
+
+# Call to_central_time function
+central_time = to_central_time(utc_time, add_delta=True)
+print(f"Central Time: {central_time}")
+
+# Call find_project_name function
+project_name = find_project_name(short_description)
+print(f"Project Name: {project_name}")
+
+# Call extract_release function
+release_number = extract_release(short_description)
+print(f"Release Number: {release_number}")
+
+# Call find_project_id function
+project_id = find_project_id(short_description)
+print(f"Project ID: {project_id}")
+
