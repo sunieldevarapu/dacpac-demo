@@ -1,0 +1,87 @@
+name: Octopus Deploy CI-NEW
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every 30 minutes
+    - cron: '*/30 * * * *'  
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+
+env:
+  # General environment settings
+  ASPNETCORE_ENVIRONMENT: ${{ vars.ASPNETCORE_ENVIRONMENT || 'development' }}
+  OCTOPUS_DEPLOY_BASE_URL: "https://octopusdeploydev.silver.com"
+  OCTOPUS_TASKS_ENDPOINT: '/api/tasks'
+  OCTOPUS_RELEASE_ENDPOINT: '/api/releases'
+  OCTOPUS_DEPLOYMENT_ENDPOINT: '/api/deployments'
+  OCTOPUS_PROJECTS_ENDPOINT: '/api/projects'
+  OCTOPUS_DEPLOY_API_KEY: ${{ secrets.OCTOPUS_DEPLOY_API_KEY }}
+  OCTOPUS_ENVIRONMENT_ID: 'Environments-14'
+
+
+jobs:
+  run-script:
+    runs-on: Windows-Runner
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install request
+        
+    - name: Install Octopus CLI 🐙
+      uses: OctopusDeploy/install-octopus-cli-action@v3
+      with:
+        version: '*'
+
+    - name: Schedule Octopus Deployment
+      run: |
+        python -c "
+        # from sched.octopus_deploy import schedule_release, to_central_time
+        import os
+        import logging
+
+        # Setup logging
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+        logger = logging.getLogger(__name__)
+
+        # Hardcoded values
+        release_id = 'Releases-1234'
+        project_id = 'Projects-5678'
+        channel_id = 'Channels-9012'
+        deployment_time = '2025-05-07T14:00:00'
+
+        logger.info(f'Scheduling deployment for release {release_id} of project {project_id}')
+
+        # Schedule deployment
+        deployment_resource = {
+            'ReleaseId': release_id,
+            'ProjectId': project_id,
+            'ChannelId': channel_id,
+            'EnvironmentId': Environments-14,
+            'QueueTime': to_central_time(deployment_time, False),
+            'QueueTimeExpiry': to_central_time(deployment_time, True)
+        }
+
+        result = schedule_release(deployment_resource)
+        if result:
+            logger.info(f'Successfully scheduled deployment for {release_id} of project {project_id}')
+        else:
+            logger.error(f'Failed to schedule deployment')
+            exit(1)
+        "
+
+
