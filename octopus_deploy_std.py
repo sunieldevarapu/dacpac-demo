@@ -539,3 +539,30 @@ print(f"Release Number: {release_number}")
 project_id = find_project_id(short_description)
 print(f"Project ID: {project_id}")
 
+# Import necessary modules
+import requests
+
+# Sample data for function calls
+release_number = "2023.4.0.246"
+project_id = "Projects-644"
+deployment_resource = {
+    "ReleaseId": "Release-1",
+    "ProjectId": "Project-1",
+    "ChannelId": "Channel-1",
+    "EnvironmentId": "Environment-123",
+    "QueueTime": "2023-05-07T12:00:00",
+    "QueueTimeExpiry": "2023-05-07T12:30:00"
+}
+
+# Call find_release function
+release_info = find_release(release_number, project_id)
+print(f"Release Info: {release_info}")
+
+# Call schedule_release function
+is_scheduled = schedule_release(deployment_resource)
+print(f"Is Scheduled: {is_scheduled}")
+
+# Call queued_deployments function
+queued_deployments_list = queued_deployments()
+print(f"Queued Deployments: {queued_deployments_list}")
+
