@@ -112,3 +112,57 @@ jobs:
     exit(1 if not result else 0)
     "
 
+
+-----------------------------------------------------------------------------------------------------------
+
+- name: Schedule Octopus Deployment
+  run: |
+    python -c "
+    import os
+    import logging
+    import requests
+
+    # Define the trigger_deployment function
+    def trigger_deployment(deployment_resource):
+        try:
+            response = requests.post(
+                url=f\"{os.getenv('OCTOPUS_DEPLOY_BASE_URL')}{os.getenv('OCTOPUS_DEPLOYMENT_ENDPOINT')}\",
+                headers={\"X-Octopus-ApiKey\": os.getenv('OCTOPUS_DEPLOY_API_KEY')},
+                json=deployment_resource,
+                verify=False
+            )
+            return response.status_code == 201
+        except Exception as e:
+            logging.error(f'Error triggering deployment: {e}')
+            return False
+
+    # Setup logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+    logger = logging.getLogger(__name__)
+
+    # Hardcoded values
+    release_id = 'Release-1'
+    project_id = 'Project-1'
+    channel_id = 'Channel-1'
+    deployment_time = '2025-05-07T15:00:00'
+    logger.info(f'Scheduling deployment for release {release_id} of project {project_id}')
+
+    # Schedule deployment
+    deployment_resource = {
+        'ReleaseId': release_id,
+        'ProjectId': project_id,
+        'ChannelId': channel_id,
+        'EnvironmentId': 'Environment-123',
+        # 'QueueTime': to_central_time(deployment_time, False),
+        # 'QueueTimeExpiry': to_central_time(deployment_time, True)
+    }
+    result = trigger_deployment(deployment_resource)
+    if result:
+        logger.info(f'Successfully triggered deployment for {release_id} of project {project_id}')
+        print('Deployment Result:', result)  # Print the result
+    else:
+        logger.error('Failed to trigger deployment')
+        print('Deployment Result: Failed')  # Print the failure message
+    exit(1 if not result else 0)
+    "
+
