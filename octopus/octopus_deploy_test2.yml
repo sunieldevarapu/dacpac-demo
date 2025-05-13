@@ -1,0 +1,65 @@
+name: Python App Build and Deploy
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set Version
+      run: echo "PACKAGE_VERSION=$(Get-Date -Format 'yyyy.MM.dd').${{ github.run_number }}" >> $env:GITHUB_ENV
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Tests
+      run: |
+        python -m unittest discover -s tests
+
+    - name: Create artifacts folder
+      run: |
+        mkdir "${env:GITHUB_WORKSPACE}\artifacts"
+        mkdir "${env:GITHUB_WORKSPACE}\artifacts\TestApp"
+
+    - name: Copy Python App Files
+      run: |
+        Copy-Item -Recurse -Path .\test_app\* -Destination "${env:GITHUB_WORKSPACE}\artifacts\TestApp"
+
+    - name: Install Octopus CLI
+      uses: OctopusDeploy/install-octopus-cli-action@v1.1.10
+      with:
+        version: latest
+
+    - name: Package TestApp
+      run: |
+        octo pack --id="TestApp" --format="Zip" --version="${env:PACKAGE_VERSION}" --basePath="${env:GITHUB_WORKSPACE}\artifacts\TestApp" --outFolder="${env:GITHUB_WORKSPACE}\artifacts"
+
+    - name: Push TestApp Package to Octopus
+      uses: OctopusDeploy/push-package-action@v1.1.1
+      with:
+        api_key: ${{ secrets.OCTOPUSSERVERAPIKEY }}
+        server: ${{ secrets.OCTOPUSSERVERURL }}
+        packages: "artifacts\TestApp.${{ env.PACKAGE_VERSION }}.zip"
+        space: ${{ secrets.OCTOPUSSERVER_SPACE }}
+        overwrite_mode: OverwriteExisting
+
+    - name: Create Octopus Release
+      run: |
+        octo create-release --project TestApp --version="${env:PACKAGE_VERSION}" --server="${{ secrets.OCTOPUSSERVERURL }}" --apiKey="${{ secrets.OCTOPUSSERVERAPIKEY }}" --space="${{ secrets.OCTOPUSSERVER_SPACE }}"
+
+    - name: Deploy Octopus Release to Test
+      run: |
+        octo deploy-release --project TestApp --version="${env:PACKAGE_VERSION}" --server="${{ secrets.OCTOPUSSERVERURL }}" --apiKey="${{ secrets.OCTOPUSSERVERAPIKEY }}" --space="${{ secrets.OCTOPUSSERVER_SPACE }}" --deployTo Test
