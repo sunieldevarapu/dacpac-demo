@@ -195,3 +195,41 @@ def install_octopus_cli():
     # Optionally verify installation
     run_cmd("octo help")
 
+
+=======================================================================================================
+
+def install_octopus_cli():
+    print("\n--- Installing Octopus CLI manually (Windows)...")
+
+    # Octopus CLI direct ZIP download for Windows x64
+    octo_url = "https://download.octopusdeploy.com/octopus-tools/OctopusTools.8.4.0-win-x64.zip"
+    octo_zip = "OctopusTools.zip"
+    extract_dir = "octo-cli"
+
+    # Step 1: Download the CLI zip using requests (not curl)
+    import requests
+    print(f"Downloading Octopus CLI from {octo_url}...")
+    response = requests.get(octo_url)
+    if response.status_code != 200:
+        raise RuntimeError(f"Failed to download Octopus CLI: {response.status_code}")
+    
+    with open(octo_zip, "wb") as f:
+        f.write(response.content)
+    print(f"Saved ZIP as: {octo_zip}")
+
+    # Step 2: Extract ZIP contents using zipfile
+    import zipfile
+    print(f"Extracting {octo_zip} to {extract_dir}...")
+    with zipfile.ZipFile(octo_zip, 'r') as zip_ref:
+        zip_ref.extractall(extract_dir)
+    print("Extraction complete.")
+
+    # Step 3: Add extracted folder to PATH
+    octo_path = os.path.abspath(extract_dir)
+    os.environ["PATH"] = f"{octo_path};{os.environ['PATH']}"
+    print(f"Added {octo_path} to PATH for this process.")
+
+    # Step 4: Verify octo is callable
+    print("Verifying Octopus CLI install with 'octo help'...")
+    run_cmd("octo help")
+
