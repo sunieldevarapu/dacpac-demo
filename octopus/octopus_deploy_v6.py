@@ -233,3 +233,9 @@ def install_octopus_cli():
     print("Verifying Octopus CLI install with 'octo help'...")
     run_cmd("octo help")
 
+
+===========================================================
+
+curl -L -o OctopusTools.zip -H "User-Agent: Mozilla/5.0" ^
+"https://download.octopusdeploy.com/octopus-tools/OctopusTools.8.4.0-win-x64.zip"
+
