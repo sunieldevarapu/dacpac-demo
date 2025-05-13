@@ -169,3 +169,29 @@ if __name__ == "__main__":
         parser.print_help()
 
     print("\n=== Script Finished ===")
+
+
+=========================================================================
+
+def install_octopus_cli():
+    print("\n--- Installing Octopus CLI manually (Windows)...")
+
+    octo_url = "https://download.octopusdeploy.com/octopus-tools/OctopusTools.latest.zip"
+    octo_zip = "OctopusTools.zip"
+    extract_dir = "octo-cli"
+
+    # Download CLI zip
+    run_cmd(f"curl -L -o {octo_zip} {octo_url}")
+
+    # Extract to folder
+    shutil.unpack_archive(octo_zip, extract_dir)
+    print(f"Extracted Octopus CLI to {extract_dir}")
+
+    # Add CLI path to environment PATH
+    octo_path = os.path.abspath(extract_dir)
+    os.environ["PATH"] = f"{octo_path};{os.environ['PATH']}"
+    print(f"Added {octo_path} to PATH")
+
+    # Optionally verify installation
+    run_cmd("octo help")
+
