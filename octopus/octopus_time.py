@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-# Schedule 5 minutes from now
-queue_time = (datetime.utcnow() + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
-queue_expiry = (datetime.utcnow() + timedelta(minutes=65)).strftime("%Y-%m-%dT%H:%M:%SZ")
+queue_time = (datetime.now(timezone.utc) + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+queue_expiry = (datetime.now(timezone.utc) + timedelta(minutes=65)).strftime("%Y-%m-%dT%H:%M:%SZ")
