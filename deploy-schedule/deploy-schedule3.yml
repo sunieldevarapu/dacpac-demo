@@ -13,12 +13,16 @@ jobs:
       - name: Run CTASK Simulation and Schedule Octopus Deployment
         shell: pwsh
         run: |
+          Write-Output "Starting CTASK + Octopus Deployment Simulation Workflow..."
+
           $centralTime = [System.TimeZoneInfo]::FindSystemTimeZoneById("Central Standard Time")
           function Print-Timestamped($message) {
             $now = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $centralTime)
             Write-Output "$message $($now.ToString('yyyy-MM-dd HH:mm')) CST"
             Write-Output "--------------------"
           }
+
+          Write-Output "Initializing task and deployment data..."
 
           $unassignedTasks = @(
             @{ id = "CTASK001"; description = "Update deployment pipeline" },
@@ -36,6 +40,7 @@ jobs:
           )
 
           function Unassign-Tasks {
+            Write-Output "Starting task unassignment..."
             Print-Timestamped "PROCESS STARTED"
             Write-Output "ENVIRONMENT: development"
             Write-Output "Unassigning tasks assigned to AUTOOCTOPUS..."
@@ -46,7 +51,7 @@ jobs:
           }
 
           function Schedule-Tasks {
-            Write-Output "Getting unassigned tasks..."
+            Write-Output "Fetching unassigned tasks..."
             foreach ($task in $unassignedTasks) {
               Write-Output "Unassigned task: $($task.id) - $($task.description)"
             }
@@ -57,17 +62,19 @@ jobs:
                 Write-Output "Scheduled task: $($task.id) - $($task.description)"
               }
               Print-Timestamped "SCHEDULE"
+            } else {
+              Write-Output "No unassigned tasks found."
             }
           }
 
           function Authorize-Deployments {
-            Write-Output "Getting queued deployments..."
+            Write-Output "Fetching queued deployments..."
             foreach ($deploy in $queuedDeployments) {
               Write-Output "Queued deployment: $($deploy.id) - $($deploy.project)"
             }
             Print-Timestamped "GET QUEUED DEPLOYMENTS"
 
-            Write-Output "Getting assigned tasks..."
+            Write-Output "Fetching assigned tasks..."
             foreach ($task in $assignedTasks) {
               Write-Output "Assigned task: $($task.id) - $($task.description)"
             }
@@ -82,6 +89,7 @@ jobs:
           }
 
           function Schedule-OctopusDeployment {
+            Write-Output "Starting Octopus deployment scheduling..."
             $releaseNumber = "1.0.0"
             $projectName = "Project A"
             $deploymentTime = (Get-Date).AddMinutes(10)
@@ -100,7 +108,10 @@ jobs:
           }
 
           # Execute all steps
+          Write-Output "Executing workflow steps..."
           Unassign-Tasks
           Schedule-Tasks
           Authorize-Deployments
           Schedule-OctopusDeployment
+
+          Write-Output "Workflow completed successfully!"
