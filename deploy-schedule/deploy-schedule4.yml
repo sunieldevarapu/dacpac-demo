@@ -1,0 +1,132 @@
+
+name: CTASK + Octopus Deployment2
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 3 * * *'  # Daily at 3 AM UTC
+
+jobs:
+  run-simulation:
+    runs-on: Windows-Runner
+
+    steps:
+      - name: Run CTASK Simulation and Schedule Octopus Deployment
+        shell: pwsh
+        run: |
+          Write-Output "Starting CTASK + Octopus Deployment Simulation Workflow..."
+
+          $centralTime = [System.TimeZoneInfo]::FindSystemTimeZoneById("Central Standard Time")
+          function Print-Timestamped($message) {
+            $now = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $centralTime)
+            Write-Output "$message $($now.ToString('yyyy-MM-dd HH:mm')) CST"
+            Write-Output "--------------------"
+          }
+
+          Write-Output "Initializing task and deployment data..."
+
+          $unassignedTasks = @(
+            @{ id = "CTASK001"; description = "Update deployment pipeline" },
+            @{ id = "CTASK002"; description = "Review change request" }
+          )
+
+          $assignedTasks = @(
+            @{ id = "CTASK003"; description = "Deploy to staging" },
+            @{ id = "CTASK004"; description = "Deploy to production" }
+          )
+
+          $queuedDeployments = @(
+            @{ id = "DEPLOY001"; project = "Project A" },
+            @{ id = "DEPLOY002"; project = "Project B" }
+          )
+
+          function Unassign-Tasks {
+            Write-Output "Starting task unassignment..."
+            Print-Timestamped "PROCESS STARTED"
+            Write-Output "ENVIRONMENT: development"
+            Write-Output "Unassigning tasks assigned to AUTOOCTOPUS..."
+            foreach ($task in $assignedTasks) {
+              Write-Output "Unassigned task: $($task.id) - $($task.description)"
+            }
+            Print-Timestamped "UNASSIGN"
+          }
+
+          function Schedule-Tasks {
+            Write-Output "Fetching unassigned tasks..."
+            foreach ($task in $unassignedTasks) {
+              Write-Output "Unassigned task: $($task.id) - $($task.description)"
+            }
+            Print-Timestamped "GET TASKS"
+            if ($unassignedTasks.Count -gt 0) {
+              Write-Output "Scheduling tasks..."
+              foreach ($task in $unassignedTasks) {
+                Write-Output "Scheduled task: $($task.id) - $($task.description)"
+              }
+              Print-Timestamped "SCHEDULE"
+            } else {
+              Write-Output "No unassigned tasks found."
+            }
+          }
+
+          function Authorize-Deployments {
+            Write-Output "Fetching queued deployments..."
+            foreach ($deploy in $queuedDeployments) {
+              Write-Output "Queued deployment: $($deploy.id) - $($deploy.project)"
+            }
+            Print-Timestamped "GET QUEUED DEPLOYMENTS"
+
+            Write-Output "Fetching assigned tasks..."
+            foreach ($task in $assignedTasks) {
+              Write-Output "Assigned task: $($task.id) - $($task.description)"
+            }
+            Print-Timestamped "GET ASSIGNED TASKS"
+
+            Write-Output "Authorizing deployments..."
+            foreach ($deploy in $queuedDeployments) {
+              Write-Output "Authorized deployment: $($deploy.id) for project $($deploy.project)"
+            }
+            Print-Timestamped "AUTHORIZE DEPLOYMENTS"
+            Print-Timestamped "PROCESS FINISHED"
+          }
+
+          function Schedule-OctopusDeployment {
+            Write-Output "Starting Octopus deployment scheduling..."
+            $octopusUrl = "https://your-octopus-instance.octopus.app"
+            $apiKey = "API-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+            $projectId = "Projects-123"
+            $releaseId = "Releases-456"
+            $environmentId = "Environments-789"
+            $queueTime = "2025-05-20T10:00:00-05:00"
+
+            $headers = @{
+              "X-Octopus-ApiKey" = $apiKey
+              "Content-Type" = "application/json"
+            }
+
+            $body = @{
+              ReleaseId = $releaseId
+              ProjectId = $projectId
+              EnvironmentId = $environmentId
+              QueueTime = $queueTime
+            } | ConvertTo-Json -Depth 5
+
+            $response = Invoke-RestMethod -Uri "$octopusUrl/api/deployments" -Method Post -Headers $headers -Body $body
+
+            if ($response) {
+              Write-Output "Deployment successfully scheduled!"
+              Write-Output "Deployment ID: $($response.Id)"
+            } else {
+              Write-Output "Failed to schedule deployment."
+              exit 1
+            }
+            Print-Timestamped "OCTOPUS DEPLOYMENT SCHEDULED"
+          }
+
+          # Execute all steps
+          Write-Output "Executing workflow steps..."
+          Unassign-Tasks
+          Schedule-Tasks
+          Authorize-Deployments
+          Schedule-OctopusDeployment
+
+          Write-Output "Workflow completed successfully!"
