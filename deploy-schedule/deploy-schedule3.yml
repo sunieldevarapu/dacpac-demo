@@ -1,0 +1,106 @@
+name: CTASK + Octopus Deployment Simulation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 3 AM UTC
+
+jobs:
+  run-simulation:
+    runs-on: windows-latest
+
+    steps:
+      - name: Run CTASK Simulation and Schedule Octopus Deployment
+        shell: pwsh
+        run: |
+          $centralTime = [System.TimeZoneInfo]::FindSystemTimeZoneById("Central Standard Time")
+          function Print-Timestamped($message) {
+            $now = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $centralTime)
+            Write-Output "$message $($now.ToString('yyyy-MM-dd HH:mm')) CST"
+            Write-Output "--------------------"
+          }
+
+          $unassignedTasks = @(
+            @{ id = "CTASK001"; description = "Update deployment pipeline" },
+            @{ id = "CTASK002"; description = "Review change request" }
+          )
+
+          $assignedTasks = @(
+            @{ id = "CTASK003"; description = "Deploy to staging" },
+            @{ id = "CTASK004"; description = "Deploy to production" }
+          )
+
+          $queuedDeployments = @(
+            @{ id = "DEPLOY001"; project = "Project A" },
+            @{ id = "DEPLOY002"; project = "Project B" }
+          )
+
+          function Unassign-Tasks {
+            Print-Timestamped "PROCESS STARTED"
+            Write-Output "ENVIRONMENT: development"
+            Write-Output "Unassigning tasks assigned to AUTOOCTOPUS..."
+            foreach ($task in $assignedTasks) {
+              Write-Output "Unassigned task: $($task.id) - $($task.description)"
+            }
+            Print-Timestamped "UNASSIGN"
+          }
+
+          function Schedule-Tasks {
+            Write-Output "Getting unassigned tasks..."
+            foreach ($task in $unassignedTasks) {
+              Write-Output "Unassigned task: $($task.id) - $($task.description)"
+            }
+            Print-Timestamped "GET TASKS"
+            if ($unassignedTasks.Count -gt 0) {
+              Write-Output "Scheduling tasks..."
+              foreach ($task in $unassignedTasks) {
+                Write-Output "Scheduled task: $($task.id) - $($task.description)"
+              }
+              Print-Timestamped "SCHEDULE"
+            }
+          }
+
+          function Authorize-Deployments {
+            Write-Output "Getting queued deployments..."
+            foreach ($deploy in $queuedDeployments) {
+              Write-Output "Queued deployment: $($deploy.id) - $($deploy.project)"
+            }
+            Print-Timestamped "GET QUEUED DEPLOYMENTS"
+
+            Write-Output "Getting assigned tasks..."
+            foreach ($task in $assignedTasks) {
+              Write-Output "Assigned task: $($task.id) - $($task.description)"
+            }
+            Print-Timestamped "GET ASSIGNED TASKS"
+
+            Write-Output "Authorizing deployments..."
+            foreach ($deploy in $queuedDeployments) {
+              Write-Output "Authorized deployment: $($deploy.id) for project $($deploy.project)"
+            }
+            Print-Timestamped "AUTHORIZE DEPLOYMENTS"
+            Print-Timestamped "PROCESS FINISHED"
+          }
+
+          function Schedule-OctopusDeployment {
+            $releaseNumber = "1.0.0"
+            $projectName = "Project A"
+            $deploymentTime = (Get-Date).AddMinutes(10)
+
+            Print-Timestamped "SCHEDULING OCTOPUS DEPLOYMENT"
+            Write-Output "Scheduling deployment for release $releaseNumber of project $projectName at $deploymentTime"
+
+            # Simulated Octopus deployment logic
+            Write-Output "Found project ID: Projects-123"
+            Write-Output "Found release ID: Releases-456"
+            Write-Output "Environment ID: Environments-789"
+            Write-Output "QueueTime: $deploymentTime"
+            Write-Output "QueueTimeExpiry: $($deploymentTime.AddMinutes(5))"
+            Write-Output "Deployment scheduled successfully!"
+            Print-Timestamped "OCTOPUS DEPLOYMENT SCHEDULED"
+          }
+
+          # Execute all steps
+          Unassign-Tasks
+          Schedule-Tasks
+          Authorize-Deployments
+          Schedule-OctopusDeployment
