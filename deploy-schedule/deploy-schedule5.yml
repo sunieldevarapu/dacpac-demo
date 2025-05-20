@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      API_KEY: API-FANJ8IK0T7HWJCL10RICZT5YNXRJSXLP
+      API_KEY: API-
       BASE_URL: https://octopusdeploy-dev.healthspring.inside/
       PROJECT_ID: Projects-243
       SPACE_ID: Spaces-1
