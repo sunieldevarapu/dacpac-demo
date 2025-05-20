@@ -1,0 +1,102 @@
+name: Deploy Multiple Projects
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    env:
+      API_KEY: API-
+      BASE_URL: https://octopusdeploy-dev.healthspring.inside/
+      SPACE_ID: Spaces-1
+      ENVIRONMENT_ID: Environments-2
+
+    steps:
+      - name: ⬇ Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🔧 Install Octopus CLI
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/OctopusDeploy/OctopusCLI/releases/download/v9.1.7/OctopusTools.9.1.7.win-x64.zip" -OutFile "OctopusTools.zip"
+          Expand-Archive -Path "OctopusTools.zip" -DestinationPath "octo-cli"
+          $env:PATH = "$PWD\octo-cli;$env:PATH"
+          octo help
+
+      - name: 🚀 Deploy Multiple Projects to Octopus
+        shell: pwsh
+        run: |
+          $API_KEY = "${{ env.API_KEY }}"
+          $BASE_URL = "${{ env.BASE_URL }}"
+          $SPACE_ID = "${{ env.SPACE_ID }}"
+          $ENVIRONMENT_ID = "${{ env.ENVIRONMENT_ID }}"
+
+          $headers = @{
+            "X-Octopus-ApiKey" = $API_KEY
+            "Content-Type" = "application/json"
+          }
+
+          # List of project IDs and names
+          $projects = @(
+            @{ Id = "Projects-243"; Name = "Octopus-Test" },
+            @{ Id = "Projects-244"; Name = "Octopus-API" },
+            @{ Id = "Projects-245"; Name = "Octopus-UI" }
+          )
+
+          foreach ($project in $projects) {
+            $projectId = $project.Id
+            $projectName = $project.Name
+
+            Write-Host "🔄 Deploying project: $projectName ($projectId)"
+
+            # Get Channel ID
+            $channelUrl = "$BASE_URL/api/projects/$projectId/channels"
+            $channelResp = Invoke-RestMethod -Uri $channelUrl -Headers $headers -Method Get -SkipCertificateCheck
+            $channelId = $channelResp.Items[0].Id
+            # Create Release
+            $releaseUrl = "$BASE_URL/api/$SPACE_ID/releases/create/v1"
+            $releasePayload = @{
+              Version = "0.37"
+              ProjectID = $projectId
+              ChannelID = $channelId
+              SpaceID = $SPACE_ID
+              ProjectName = $projectName
+              SpaceIdOrName = $SPACE_ID
+            } | ConvertTo-Json -Depth 10
+
+            $releaseResp = Invoke-RestMethod -Uri $releaseUrl -Headers $headers -Method Post -Body $releasePayload -SkipCertificateCheck
+            Write-Host "✅ Release created for $projectName"
+
+            # Get Latest Release ID
+            $releasesUrl = "$BASE_URL/api/projects/$projectId/releases"
+            $releasesResp = Invoke-RestMethod -Uri $releasesUrl -Headers $headers -Method Get -SkipCertificateCheck
+            $releaseId = $releasesResp.Items[0].Id
+
+            # Prepare Deployment
+            $queueTime = (Get-Date).ToUniversalTime().AddMinutes(5).ToString("yyyy-MM-ddTHH:mm:ssZ")
+            $queueExpiry = (Get-Date).ToUniversalTime().AddMinutes(65).ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+            $deployUrl = "$BASE_URL/api/$SPACE_ID/deployments"
+            $deployPayload = @{
+              ProjectId = $projectId
+              ReleaseId = $releaseId
+              EnvironmentId = $ENVIRONMENT_ID
+              ChannelId = $channelId
+              QueueTime = $queueTime
+              QueueTimeExpiry = $queueExpiry
+            } | ConvertTo-Json -Depth 10
+
+            $deployResp = Invoke-RestMethod -Uri $deployUrl -Headers $headers -Method Post -Body $deployPayload -SkipCertificateCheck
+            Write-Host "🚀 Deployment triggered for $projectName"
+          }
