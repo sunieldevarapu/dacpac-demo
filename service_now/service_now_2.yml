@@ -1,0 +1,66 @@
+name: ServiceNow API via PowerShell
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-servicenow-api:
+    runs-on: windows-latest
+
+    env:
+      SERVICENOW_INSTANCE_URL: ${{ secrets.SERVICENOW_INSTANCE_URL }}
+      SERVICENOW_USERNAME: ${{ secrets.SERVICENOW_USERNAME }}
+      SERVICENOW_PASSWORD: ${{ secrets.SERVICENOW_PASSWORD }}
+
+    steps:
+      - name: Call ServiceNow API and export results using PowerShell
+        shell: pwsh
+        run: |
+          $instanceUrl = $env:SERVICENOW_INSTANCE_URL
+          $username = $env:SERVICENOW_USERNAME
+          $password = $env:SERVICENOW_PASSWORD
+
+          function Get-ServiceNowData($endpoint, $params) {
+              $uri = \"$instanceUrl$endpoint?$params\"
+              Write-Host \"Calling: $uri\"
+              try {
+                  $response = Invoke-RestMethod -Uri $uri -Method Get -Headers @{Accept = 'application/json'} -Authentication Basic -Credential (New-Object System.Management.Automation.PSCredential($username, (ConvertTo-SecureString $password -AsPlainText -Force)))
+                  return $response
+              } catch {
+                  Write-Host \"[ERROR] $_\"
+                  return @{ error = $_.Exception.Message }
+              }
+          }
+
+          Write-Host \"Fetching unassigned tasks...\"
+          $unassignedTasks = Get-ServiceNowData \"/api/now/table/task\" \"sysparm_query=assigned_toISEMPTY&sysparm_limit=10\"
+
+          Write-Host \"Fetching change tasks...\"
+          $changeTasks = Get-ServiceNowData \"/api/now/table/change_task\" \"sysparm_limit=10\"
+
+          $outputPath = \"servicenow_output1.txt\"
+          Write-Host \"Exporting results to $outputPath...\"
+
+          Add-Content -Path $outputPath -Value \"Unassigned Tasks:`n\"
+          if ($unassignedTasks.error) {
+              Add-Content -Path $outputPath -Value \"Error: $($unassignedTasks.error)`n`n\"
+          } else {
+              foreach ($item in $unassignedTasks.result) {
+                  Add-Content -Path $outputPath -Value \"Task Number: $($item.number)`nShort Description: $($item.short_description)`n`n\"
+              }
+          }
+
+          Add-Content -Path $outputPath -Value \"Change Tasks:`n\"
+          if ($changeTasks.error) {
+              Add-Content -Path $outputPath -Value \"Error: $($changeTasks.error)`n`n\"
+          } else {
+              foreach ($item in $changeTasks.result) {
+                  Add-Content -Path $outputPath -Value \"Task Number: $($item.number)`nShort Description: $($item.short_description)`n`n\"
+              }
+          }
+
+      - name: Upload output file
+        uses: actions/upload-artifact@v4
+        with:
+          name: servicenow-output
+          path: servicenow_output1.txt
