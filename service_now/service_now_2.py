@@ -3,9 +3,9 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 # Base configuration
-INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://your_instance.service-now.com")
-USERNAME = os.getenv("SERVICENOW_USERNAME", "your_username")
-PASSWORD = os.getenv("SERVICENOW_PASSWORD", "your_password")
+INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://z.service-now.com")
+USERNAME = os.getenv("SERVICENOW_USERNAME", "D")
+PASSWORD = os.getenv("SERVICENOW_PASSWORD", "")
 
 def get_servicenow_data(endpoint, params=None):
     """
@@ -48,10 +48,32 @@ def get_change_tasks():
     }
     return get_servicenow_data(endpoint, params)
 
+def export_to_file(data, filename):
+    """
+    Exports the given data to a human-readable text file.
+    """
+    with open(filename, 'w') as file:
+        for section, items in data.items():
+            file.write(f"{section}:\n")
+            if "error" in items:
+                file.write(f"Error: {items['error']}\n")
+            else:
+                for item in items.get('result', []):
+                    file.write(f"Task Number: {item.get('number', 'N/A')}\n")
+                    file.write(f"Short Description: {item.get('short_description', 'N/A')}\n")
+                    file.write("\n")
+            file.write("\n")
+    print(f"[SUCCESS] Data exported to {filename}")
+
 # Main execution
 if __name__ == "__main__":
+    results = {}
     unassigned_tasks = get_unassigned_tasks()
+    results["Unassigned Tasks"] = unassigned_tasks
     print("[RESULT] Unassigned Tasks:\n", unassigned_tasks)
 
     change_tasks = get_change_tasks()
+    results["Change Tasks"] = change_tasks
     print("[RESULT] Change Tasks:\n", change_tasks)
+
+    export_to_file(results, "servicenow_output1.txt")
