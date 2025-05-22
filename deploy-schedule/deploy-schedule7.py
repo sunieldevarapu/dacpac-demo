@@ -15,6 +15,22 @@ import pytz
 from pytz import BaseTzInfo,timezone
 
 
+def convert_utc_offset(date_string: str):
+    """
+    Converts UTC offset to Central Time
+    Parameters:
+    date_string: datetime string to be converted to central time
+    """
+    if not date_string or not date_string.strip():
+        return "Invalid Date"
+    try:
+        return datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y-%m-%d %H:%M")
+    except ValueError as e:
+        print(f"[ERROR] Date parsing failed: {e}")
+        return "Invalid Date"
+
+
+
 from datetime import tzinfo, timedelta, datetime
 from typing import ClassVar, Any
 
