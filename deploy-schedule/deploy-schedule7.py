@@ -6,33 +6,36 @@ from pytz import BaseTzInfo
 import requests
 from requests.auth import HTTPBasicAuth
 from datetime import datetime, timedelta
-import datetime
-from _typeshed import Unused
+#import datetime
+#from _typeshed import Unused
+from typing import Any
 from collections.abc import Mapping
-from typing import ClassVar
+from typing import ClassVar, Any
+import pytz
+from pytz import BaseTzInfo,timezone
 
 
 # Actually named UTC and then masked with a singleton with the same name
 class _UTCclass(BaseTzInfo):
-    def localize(self, dt: datetime.datetime, is_dst: bool | None = False) -> datetime.datetime: ...
-    def normalize(self, dt: datetime.datetime, is_dst: bool | None = False) -> datetime.datetime: ...
-    def tzname(self, dt: datetime.datetime | None) -> str: ...
-    def utcoffset(self, dt: datetime.datetime | None) -> datetime.timedelta: ...
-    def dst(self, dt: datetime.datetime | None) -> datetime.timedelta: ...
+    def localize(self, dt: datetime, is_dst: bool | None = False) -> datetime: ...
+    def normalize(self, dt: datetime, is_dst: bool | None = False) -> datetime: ...
+    def tzname(self, dt: datetime | None) -> str: ...
+    def utcoffset(self, dt: datetime | None) -> timedelta: ...
+    def dst(self, dt: datetime | None) -> timedelta: ...
 
 utc: _UTCclass
 UTC: _UTCclass
 
-def timezone(zone: str) -> _UTCclass | StaticTzInfo | DstTzInfo: ...
+#def timezone(zone: str) -> _UTCclass | StaticTzInfo | DstTzInfo: ...
 
 class _FixedOffset(datetime.tzinfo):
     zone: ClassVar[None]
     def __init__(self, minutes: int) -> None: ...
-    def utcoffset(self, dt: Unused) -> datetime.timedelta | None: ...
-    def dst(self, dt: Unused) -> datetime.timedelta: ...
-    def tzname(self, dt: Unused) -> None: ...
-    def localize(self, dt: datetime.datetime, is_dst: bool | None = False) -> datetime.datetime: ...
-    def normalize(self, dt: datetime.datetime, is_dst: bool | None = False) -> datetime.datetime: ...
+    def utcoffset(self, dt: Any) -> timedelta | None: ...
+    def dst(self, dt: Any) -> timedelta: ...
+    def tzname(self, dt: Any) -> None: ...
+    def localize(self, dt: datetime, is_dst: bool | None = False) -> datetime: ...
+    def normalize(self, dt: datetime, is_dst: bool | None = False) -> datetime: ...
 
 def FixedOffset(offset: int, _tzinfos: dict[int, _FixedOffset] = {}) -> _UTCclass | _FixedOffset: ...
 
@@ -42,8 +45,8 @@ common_timezones: list[str]
 common_timezones_set: set[str]
 country_timezones: Mapping[str, list[str]]
 country_names: Mapping[str, str]
-ZERO: datetime.timedelta
-HOUR: datetime.timedelta
+ZERO: timedelta
+HOUR: timedelta
 VERSION: str
 
 __all__ = [
@@ -65,9 +68,9 @@ __all__ = [
 
 
 # Base configuration
-INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://.service-now.com")
-USERNAME = os.getenv("SERVICENOW_USERNAME", "")
-PASSWORD = os.getenv("SERVICENOW_PASSWORD", "")
+INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://zilvertondev.service-now.com")
+USERNAME = os.getenv("SERVICENOW_USERNAME", "D-OCTOSCHEDULER")
+PASSWORD = os.getenv("SERVICENOW_PASSWORD", "w7C5=6W9KmQI<wJyRK*23b:3NNRPQz=R+N(.+i,0A7g+I.McM&wGEp}moHD743;cz:GmpuIUYKYkv0.}y8q$7-lz%vP;gE3vV@O>")
 
 def get_servicenow_data(endpoint, params=None):
     """
@@ -546,22 +549,22 @@ scheduler_config = {}
 if os.getenv("ASPNETCORE_ENVIRONMENT") == "Development":
     scheduler_config.update(
         {
-            "BaseUrl": "https://service-now.com",
+            "BaseUrl": "https://zilvertondev.service-now.com",
             "QueryChangeTaskEndpoint": "/api/now/table/change_task?sysparm_query=",
             "UpdateChangeTaskEndpoint": "/api/now/table/change_task",
-            "ChsDevOpsSoftwareSolutionsId": "",
-            "AutomationUserId": "",
-            "OctopusDeployApiKey": "",
+            "ChsDevOpsSoftwareSolutionsId": "2daabc1ddbebb3002bded487f49619f0",
+            "AutomationUserId": "196675b6db544c90b47d54f9489619da",
+            "OctopusDeployApiKey": "API-TF21J6OCQK1HONXEQ95BYJWZJLTMETKB",
             "ReleaseEndpoint": "/api/releases",
             "TasksEndpoint": "/api/tasks",
             "DeploymentsEndpoint": "/api/deployments",
             "ProjectsEndpoint": "/api/projects",
             "OctopusDeployBaseUrl": "https://octopusdeploydev.silver.com",
-            "ApiAuthentication": {"Username": "", "Password": ""},
+            "ApiAuthentication": {"Username": "AUTOOCTOPUS", "Password": "@ut00ct0pu$"},
             "ProductionEnvironmentId": "Environments-14",
-            "WebexUrl": "https://webe.com/v1/messages",
-            "WebexRoom": "",
-            "Bearer": ""
+            "WebexUrl": "https://webexapis.com/v1/messages",
+            "WebexRoom": "703b8fb0-15f0-11ee-b55b-2f8ddf8a82f4",
+            "Bearer": "MzVhMzhlZWQtNTVjYS00YWI1LThlODQtNTg4YjY2NWIyMDE4M2VmMTBlZDEtMmIz_PF84_c2314722-4c4b-4b56-b3a3-eb0948e14363"
         }
     )
 
@@ -569,24 +572,24 @@ if os.getenv("ASPNETCORE_ENVIRONMENT") == "Development":
 elif os.getenv("ASPNETCORE_ENVIRONMENT") == "Production":
     scheduler_config.update(
         {
-            "BaseUrl": "https://service-now.com",
+            "BaseUrl": "https://zilvertondev.service-now.com",
             "QueryChangeTaskEndpoint": "/api/now/table/change_task?sysparm_query=",
             "UpdateChangeTaskEndpoint": "/api/now/table/change_task",
-            "ChsDevOpsSoftwareSolutionsId": "",
-            "AutomationUserId": "",
-            "OctopusDeployApiKey": "",
+            "ChsDevOpsSoftwareSolutionsId": "2daabc1ddbebb3002bded487f49619f0",
+            "AutomationUserId": "5e80a49c1bad98d058a1777e0a4bcb73",
+            "OctopusDeployApiKey": "API-SHBCKLJIIXTYLMBGUSDS74UXVW",
             "ReleaseEndpoint": "/api/releases",
             "TasksEndpoint": "/api/tasks",
             "DeploymentsEndpoint": "/api/deployments",
             "ProjectsEndpoint": "/api/projects",
-            "OctopusDeployBaseUrl": "https://octopusdeploy.sys.com",
+            "OctopusDeployBaseUrl": "https://octopusdeploy.sys.cigna.com",
             "ProductionEnvironmentId": "Environments-145",
             "ApiAuthentication": {
-                "Username": "",
-                "Password": ""},
-            "WebexUrl" : "https://webex.com/v1/messages",
-            "WebexRoom": "",
-            "Bearer": ""
+                "Username": "P-AUTOOCTOPUS",
+                "Password": "7hxW%A%#5JPy"},
+            "WebexUrl" : "https://webexapis.com/v1/messages",
+            "WebexRoom": "91486ae0-544d-11ec-ab7c-c903b8781690",
+            "Bearer": "MzVhMzhlZWQtNTVjYS00YWI1LThlODQtNTg4YjY2NWIyMDE4M2VmMTBlZDEtMmIz_PF84_c2314722-4c4b-4b56-b3a3-eb0948e14363"
         }
     )
 # raise exception if there is no system environment variable set
@@ -816,8 +819,6 @@ def export_to_file(data, filename):
             file.write("\n")
     print(f"[SUCCESS] Data exported to {filename}")
 
-import pytz  # Added missing import
-
 # Main execution
 
 if __name__ == "__main__":
@@ -853,8 +854,7 @@ if __name__ == "__main__":
     else:
         print("[INFO] No tasks to schedule.")
 
-
-
+# # Main execution
 # if __name__ == "__main__":
 #     results = {}
 #     unassigned_tasks = get_unassigned_tasks()
