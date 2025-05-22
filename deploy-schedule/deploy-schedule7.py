@@ -15,6 +15,33 @@ import pytz
 from pytz import BaseTzInfo,timezone
 
 
+from datetime import tzinfo, timedelta, datetime
+from typing import ClassVar, Any
+
+class _FixedOffset(tzinfo):
+    zone: ClassVar[None]
+
+    def __init__(self, minutes: int) -> None:
+        self.__offset = timedelta(minutes=minutes)
+        self.__name = f"{minutes:+03d}00"
+
+    def utcoffset(self, dt: Any) -> timedelta:
+        return self.__offset
+
+    def dst(self, dt: Any) -> timedelta:
+        return timedelta(0)
+
+    def tzname(self, dt: Any) -> str:
+        return self.__name
+
+    def localize(self, dt: datetime, is_dst: bool = False) -> datetime:
+        return dt.replace(tzinfo=self)
+
+    def normalize(self, dt: datetime, is_dst: bool = False) -> datetime:
+        return dt
+
+
+
 # Actually named UTC and then masked with a singleton with the same name
 class _UTCclass(BaseTzInfo):
     def localize(self, dt: datetime, is_dst: bool | None = False) -> datetime: ...
