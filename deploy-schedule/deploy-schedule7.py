@@ -65,9 +65,9 @@ __all__ = [
 
 
 # Base configuration
-INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://zilvertondev.service-now.com")
-USERNAME = os.getenv("SERVICENOW_USERNAME", "D-OCTOSCHEDULER")
-PASSWORD = os.getenv("SERVICENOW_PASSWORD", "w7C5=6W9KmQI<wJyRK*23b:3NNRPQz=R+N(.+i,0A7g+I.McM&wGEp}moHD743;cz:GmpuIUYKYkv0.}y8q$7-lz%vP;gE3vV@O>")
+INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://.service-now.com")
+USERNAME = os.getenv("SERVICENOW_USERNAME", "")
+PASSWORD = os.getenv("SERVICENOW_PASSWORD", "")
 
 def get_servicenow_data(endpoint, params=None):
     """
@@ -546,22 +546,22 @@ scheduler_config = {}
 if os.getenv("ASPNETCORE_ENVIRONMENT") == "Development":
     scheduler_config.update(
         {
-            "BaseUrl": "https://cignadev1.service-now.com",
+            "BaseUrl": "https://service-now.com",
             "QueryChangeTaskEndpoint": "/api/now/table/change_task?sysparm_query=",
             "UpdateChangeTaskEndpoint": "/api/now/table/change_task",
-            "ChsDevOpsSoftwareSolutionsId": "2daabc1ddbebb3002bded487f49619f0",
-            "AutomationUserId": "196675b6db544c90b47d54f9489619da",
-            "OctopusDeployApiKey": "API-TF21J6OCQK1HONXEQ95BYJWZJLTMETKB",
+            "ChsDevOpsSoftwareSolutionsId": "",
+            "AutomationUserId": "",
+            "OctopusDeployApiKey": "",
             "ReleaseEndpoint": "/api/releases",
             "TasksEndpoint": "/api/tasks",
             "DeploymentsEndpoint": "/api/deployments",
             "ProjectsEndpoint": "/api/projects",
             "OctopusDeployBaseUrl": "https://octopusdeploydev.silver.com",
-            "ApiAuthentication": {"Username": "AUTOOCTOPUS", "Password": "@ut00ct0pu$"},
+            "ApiAuthentication": {"Username": "", "Password": ""},
             "ProductionEnvironmentId": "Environments-14",
-            "WebexUrl": "https://webexapis.com/v1/messages",
-            "WebexRoom": "703b8fb0-15f0-11ee-b55b-2f8ddf8a82f4",
-            "Bearer": "MzVhMzhlZWQtNTVjYS00YWI1LThlODQtNTg4YjY2NWIyMDE4M2VmMTBlZDEtMmIz_PF84_c2314722-4c4b-4b56-b3a3-eb0948e14363"
+            "WebexUrl": "https://webe.com/v1/messages",
+            "WebexRoom": "",
+            "Bearer": ""
         }
     )
 
@@ -569,24 +569,24 @@ if os.getenv("ASPNETCORE_ENVIRONMENT") == "Development":
 elif os.getenv("ASPNETCORE_ENVIRONMENT") == "Production":
     scheduler_config.update(
         {
-            "BaseUrl": "https://cigna.service-now.com",
+            "BaseUrl": "https://service-now.com",
             "QueryChangeTaskEndpoint": "/api/now/table/change_task?sysparm_query=",
             "UpdateChangeTaskEndpoint": "/api/now/table/change_task",
-            "ChsDevOpsSoftwareSolutionsId": "2daabc1ddbebb3002bded487f49619f0",
-            "AutomationUserId": "5e80a49c1bad98d058a1777e0a4bcb73",
-            "OctopusDeployApiKey": "API-SHBCKLJIIXTYLMBGUSDS74UXVW",
+            "ChsDevOpsSoftwareSolutionsId": "",
+            "AutomationUserId": "",
+            "OctopusDeployApiKey": "",
             "ReleaseEndpoint": "/api/releases",
             "TasksEndpoint": "/api/tasks",
             "DeploymentsEndpoint": "/api/deployments",
             "ProjectsEndpoint": "/api/projects",
-            "OctopusDeployBaseUrl": "https://octopusdeploy.sys.cigna.com",
+            "OctopusDeployBaseUrl": "https://octopusdeploy.sys.com",
             "ProductionEnvironmentId": "Environments-145",
             "ApiAuthentication": {
-                "Username": "P-AUTOOCTOPUS",
-                "Password": "7hxW%A%#5JPy"},
-            "WebexUrl" : "https://webexapis.com/v1/messages",
-            "WebexRoom": "91486ae0-544d-11ec-ab7c-c903b8781690",
-            "Bearer": "MzVhMzhlZWQtNTVjYS00YWI1LThlODQtNTg4YjY2NWIyMDE4M2VmMTBlZDEtMmIz_PF84_c2314722-4c4b-4b56-b3a3-eb0948e14363"
+                "Username": "",
+                "Password": ""},
+            "WebexUrl" : "https://webex.com/v1/messages",
+            "WebexRoom": "",
+            "Bearer": ""
         }
     )
 # raise exception if there is no system environment variable set
