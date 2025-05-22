@@ -13,6 +13,22 @@ from collections.abc import Mapping
 from typing import ClassVar, Any
 import pytz
 from pytz import BaseTzInfo,timezone
+import sys
+
+def capture_output_to_file(filename):
+    class Logger(object):
+        def __init__(self):
+            self.terminal = sys.stdout
+            self.log = open(filename, "a")
+
+        def write(self, message):
+            self.terminal.write(message)
+            self.log.write(message)
+
+        def flush(self):
+            pass
+
+    sys.stdout = Logger()
 
 
 def convert_utc_offset(date_string: str):
@@ -865,6 +881,8 @@ def export_to_file(data, filename):
 # Main execution
 
 if __name__ == "__main__":
+    capture_output_to_file("console_output.txt")
+
     results = {}
 
     # Step 1: Get unassigned tasks
