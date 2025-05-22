@@ -1025,14 +1025,14 @@ if __name__ == "__main__":
     results["Unassigned Tasks"] = unassigned_tasks
     print("\n[RESULT] Unassigned Tasks:")
     for task in unassigned_tasks.get("result", []):
-        print(f"- {task.get('number')} | {task.get('short_description')}")
+        print(f"- {task.get('number')} \n  {task.get('short_description')}")
 
     # Step 2: Get all change tasks
     change_tasks = get_change_tasks()
     results["Change Tasks"] = change_tasks
     print("\n[RESULT] Change Tasks:")
     for task in change_tasks.get("result", []):
-        print(f"- {task.get('number')} | {task.get('short_description')}")
+        print(f"- {task.get('number')} \n  {task.get('short_description')}")
 
     # Step 3: Filter tasks not assigned to autooctopus
     print("\n[INFO] Filtering tasks not assigned to 'autooctopus'...")
@@ -1041,62 +1041,32 @@ if __name__ == "__main__":
         if task.get("assigned_to", {}).get("display_value", "").lower() != "autooctopus"
     ]
     print(f"[INFO] Found {len(not_assigned_to_autooctopus)} tasks not assigned to autooctopus.")
-
-    #Print the list of task numbers and descriptions
     for task in not_assigned_to_autooctopus:
         print(f"- Task Number: {task.get('number', 'N/A')}")
-        print(f" Short Description: {task.get('short_description', 'N/A')}")
-        print()
+        print(f"  Short Description: {task.get('short_description', 'N/A')}\n")
 
     # Step 4: Schedule those tasks
     if not_assigned_to_autooctopus:
         print("\n[INFO] Scheduling change tasks...")
-        for task in not_assigned_to_autooctopus:
-           print(f"- {task.get('number', 'N/A')}: {task.get('short_description', 'N/A')}") 
         schedule(snow_items=not_assigned_to_autooctopus)
         print("[INFO] Scheduling complete.")
     else:
         print("[INFO] No tasks to schedule.")
 
-    # Get queued deployments from Octopus Deploy
+    # Step 5: Get queued deployments
     deployments = queued_deployments()
-    print(f\"GET QUEUED DEPLOYMENTS {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-    print('--------------------')
+    print(f"\n[INFO] Retrieved {len(deployments)} queued deployments.")
 
-    # Get tasks assigned to AUTOOCTOPUS
-    assigned_tasks = change_tasks(assigned_to=True)
-    print(f\"GET ASSIGNED TASKS {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-    print('--------------------')
+    # Step 6: Get tasks assigned to autooctopus
+    assigned_tasks = [
+        task for task in change_tasks.get("result", [])
+        if task.get("assigned_to", {}).get("display_value", "").lower() == "autooctopus"
+    ]
+    print(f"\n[INFO] Found {len(assigned_tasks)} tasks assigned to 'autooctopus'.")
 
-    # Authorize deployments
+    # Step 7: Authorize deployments
     authorize_deployments(snow_items=assigned_tasks, deployments=deployments)
-    print(f\"AUTHORIZE DEPLOYMENTS {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-    print('--------------------')
-    
-    print(f\"PROCESS FINISHED {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-    print('--------------------')
-    
-    #export_to_file(results, "servicenow_output2.txt")
+    print("\n[INFO] Deployment authorization complete.")
 
-# # Main execution
-# if __name__ == "__main__":
-#     results = {}
-#     unassigned_tasks = get_unassigned_tasks()
-#     results["Unassigned Tasks"] = unassigned_tasks
-#     print("[RESULT] Unassigned Tasks:\n", unassigned_tasks)
+    print(f"\n[PROCESS FINISHED] {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}")
 
-#     change_tasks = get_change_tasks()
-#     results["Change Tasks"] = change_tasks
-#     print("[RESULT] Change Tasks:\n", change_tasks)
-
-#     #export_to_file(results, "servicenow_output1.txt")
-#     # Get tasks not assigned to AUTOOCTOPUS
-#     unassigned_tasks = change_tasks(assigned_to=False)
-#     print(f\"GET TASKS {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-#     print('--------------------')
-    
-#     # Schedule change tasks
-#     if len(unassigned_tasks) > 0:
-#         schedule(snow_items=unassigned_tasks)    
-#     print(f\"SCHEDULE {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-#     print('--------------------')
