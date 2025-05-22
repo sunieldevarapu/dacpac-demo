@@ -816,25 +816,63 @@ def export_to_file(data, filename):
             file.write("\n")
     print(f"[SUCCESS] Data exported to {filename}")
 
+import pytz  # Added missing import
+
 # Main execution
+
 if __name__ == "__main__":
     results = {}
+
+    # Step 1: Get unassigned tasks
     unassigned_tasks = get_unassigned_tasks()
     results["Unassigned Tasks"] = unassigned_tasks
-    print("[RESULT] Unassigned Tasks:\n", unassigned_tasks)
+    print("\n[RESULT] Unassigned Tasks:")
+    for task in unassigned_tasks.get("result", []):
+        print(f"- {task.get('number')} | {task.get('short_description')}")
 
+    # Step 2: Get all change tasks
     change_tasks = get_change_tasks()
     results["Change Tasks"] = change_tasks
-    print("[RESULT] Change Tasks:\n", change_tasks)
+    print("\n[RESULT] Change Tasks:")
+    for task in change_tasks.get("result", []):
+        print(f"- {task.get('number')} | {task.get('short_description')}")
 
-    #export_to_file(results, "servicenow_output1.txt")
-    # Get tasks not assigned to AUTOOCTOPUS
-    unassigned_tasks = change_tasks(assigned_to=False)
-    print(f\"GET TASKS {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-    print('--------------------')
+    # Step 3: Filter tasks not assigned to autooctopus
+    print("\n[INFO] Filtering tasks not assigned to 'autooctopus'...")
+    not_assigned_to_autooctopus = [
+        task for task in change_tasks.get("result", [])
+        if task.get("assigned_to", {}).get("display_value", "").lower() != "autooctopus"
+    ]
+    print(f"[INFO] Found {len(not_assigned_to_autooctopus)} tasks not assigned to autooctopus.")
+
+    # Step 4: Schedule those tasks
+    if not_assigned_to_autooctopus:
+        print("\n[INFO] Scheduling change tasks...")
+        schedule(snow_items=not_assigned_to_autooctopus)
+        print("[INFO] Scheduling complete.")
+    else:
+        print("[INFO] No tasks to schedule.")
+
+
+
+# if __name__ == "__main__":
+#     results = {}
+#     unassigned_tasks = get_unassigned_tasks()
+#     results["Unassigned Tasks"] = unassigned_tasks
+#     print("[RESULT] Unassigned Tasks:\n", unassigned_tasks)
+
+#     change_tasks = get_change_tasks()
+#     results["Change Tasks"] = change_tasks
+#     print("[RESULT] Change Tasks:\n", change_tasks)
+
+#     #export_to_file(results, "servicenow_output1.txt")
+#     # Get tasks not assigned to AUTOOCTOPUS
+#     unassigned_tasks = change_tasks(assigned_to=False)
+#     print(f\"GET TASKS {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
+#     print('--------------------')
     
-    # Schedule change tasks
-    if len(unassigned_tasks) > 0:
-        schedule(snow_items=unassigned_tasks)    
-    print(f\"SCHEDULE {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
-    print('--------------------')
+#     # Schedule change tasks
+#     if len(unassigned_tasks) > 0:
+#         schedule(snow_items=unassigned_tasks)    
+#     print(f\"SCHEDULE {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
+#     print('--------------------')
