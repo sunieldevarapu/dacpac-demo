@@ -109,9 +109,9 @@ __all__ = [
 
 
 # Base configuration
-INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://zilvertondev.service-now.com")
-USERNAME = os.getenv("SERVICENOW_USERNAME", "D-OCTOSCHEDULER")
-PASSWORD = os.getenv("SERVICENOW_PASSWORD", "w7C5=6W9KmQI<wJyRK*23b:3NNRPQz=R+N(.+i,0A7g+I.McM&wGEp}moHD743;cz:GmpuIUYKYkv0.}y8q$7-lz%vP;gE3vV@O>")
+INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://service-now.com")
+USERNAME = os.getenv("SERVICENOW_USERNAME", "")
+PASSWORD = os.getenv("SERVICENOW_PASSWORD", "")
 
 def get_servicenow_data(endpoint, params=None):
     """
