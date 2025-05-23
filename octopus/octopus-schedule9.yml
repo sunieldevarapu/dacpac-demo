@@ -1,3 +1,19 @@
+jobs:
+  build-and-push:
+    runs-on: zilverton-private-x64-windows-2025
+    steps:
+      - name: Clear runner cache
+        run: |
+          echo "Clearing temporary files and caches..."
+          Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "$env:USERPROFILE\.cache\*" -Recurse -Force -ErrorAction SilentlyContinue
+          echo "Cache cleared."
+        shell: pwsh
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+============================================================================
+
 name: Octopus Deploy GitHub Actions Workflow
 
 on:
