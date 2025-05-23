@@ -1,0 +1,87 @@
+name: Deploy Schedule Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-schedule:
+    runs-on: windows-latest
+
+    steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests pytz
+
+    - name: Run Deployment Logic Inline
+      shell: python
+      run: |
+        import os, json, pytz
+        from datetime import datetime
+        import requests
+        from requests.auth import HTTPBasicAuth
+
+        print("[INFO] Starting deployment workflow...")
+
+        INSTANCE_URL = os.getenv("SERVICENOW_INSTANCE_URL", "https://zilvertondev.service-now.com")
+        USERNAME = os.getenv("SERVICENOW_USERNAME", "D-OCTOSCHEDULER")
+        PASSWORD = os.getenv("SERVICENOW_PASSWORD", "your-password")
+
+        def get_data(endpoint, params=None):
+            url = f"{INSTANCE_URL}{endpoint}"
+            headers = {"Accept": "application/json"}
+            print(f"[INFO] Requesting: {url}")
+            try:
+                response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD), headers=headers, params=params)
+                response.raise_for_status()
+                print("[SUCCESS] Data retrieved.")
+                return response.json()
+            except Exception as e:
+                print(f"[ERROR] {e}")
+                return {"error": str(e)}
+
+        print("[STEP 1] Fetching unassigned tasks...")
+        unassigned = get_data("/api/now/table/change_task", {"sysparm_query": "assigned_toISEMPTY", "sysparm_limit": "10"})
+        print(json.dumps(unassigned, indent=2))
+
+        print("[STEP 2] Fetching all change tasks...")
+        change_tasks = get_data("/api/now/table/change_task", {"sysparm_limit": "10"})
+        print(json.dumps(change_tasks, indent=2))
+
+        print("[STEP 3] Filtering tasks not assigned to 'autooctopus'...")
+        not_assigned = [t for t in change_tasks.get("result", []) if t.get("assigned_to", {}).get("display_value", "").lower() != "autooctopus"]
+        print(f"[INFO] Found {len(not_assigned)} tasks not assigned to autooctopus.")
+        for task in not_assigned:
+            print(f"- {task.get('number')} | {task.get('short_description')}")
+
+        print("[STEP 4] Simulating scheduling of tasks...")
+        for task in not_assigned:
+            print(f"[SCHEDULE] Would schedule task: {task.get('number')} - {task.get('short_description')}")
+
+        print("[STEP 5] Fetching queued deployments (simulated)...")
+        # Simulated response for demonstration
+        deployments = [{"Id": "Task-001", "Description": "Deploy ProjectX 1.2.3", "State": "Queued", "QueueTime": "2025-05-23T10:00:00Z"}]
+        print(json.dumps(deployments, indent=2))
+
+        print("[STEP 6] Filtering tasks assigned to 'autooctopus'...")
+        assigned_tasks = [t for t in change_tasks.get("result", []) if t.get("assigned_to", {}).get("display_value", "").lower() == "autooctopus"]
+        print(f"[INFO] Found {len(assigned_tasks)} tasks assigned to autooctopus.")
+        for task in assigned_tasks:
+            print(f"- {task.get('number')} | {task.get('short_description')}")
+
+        print("[STEP 7] Simulating deployment authorization...")
+        for deployment in deployments:
+            print(f"[AUTH] Checking deployment: {deployment['Description']}")
+            # Simulate match
+            matched = any("ProjectX" in t.get("short_description", "") for t in assigned_tasks)
+            if matched:
+                print(f"[AUTH] Authorized: {deployment['Description']}")
+            else:
+                print(f"[AUTH] Unauthorized: {deployment['Description']} - Would cancel.")
+
+        print(f"[PROCESS FINISHED] {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}")
