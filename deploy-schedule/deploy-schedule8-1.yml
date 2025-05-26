@@ -1,0 +1,63 @@
+name: Schedule Deployments (Windows PowerShell)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  schedule:
+    runs-on: windows-latest
+
+    env:
+      SERVICENOW_INSTANCE_URL: https://v.service-now.com
+      SERVICENOW_USERNAME: ${{ secrets.SERVICENOW_USERNAME }}
+      SERVICENOW_PASSWORD: ${{ secrets.SERVICENOW_PASSWORD }}
+      OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY }}
+      OCTOPUS_BASE_URL: https://octopusdeploy.sys.com
+
+    steps:
+      - name: Run scheduling logic in PowerShell
+        shell: pwsh
+        run: |
+          Write-Host "`n[INFO] Starting ServiceNow task processing..."
+
+          # Step 1: Fetch unassigned tasks
+          $endpoint1 = "$env:SERVICENOW_INSTANCE_URL/api/now/table/change_task?sysparm_query=assigned_toISEMPTY&sysparm_limit=10"
+          Write-Host "`n[INFO] Requesting unassigned tasks..."
+          $unassigned = Invoke-RestMethod -Uri $endpoint1 -Method Get -Headers @{Accept="application/json"} -Credential (New-Object System.Management.Automation.PSCredential($env:SERVICENOW_USERNAME,(ConvertTo-SecureString $env:SERVICENOW_PASSWORD -AsPlainText -Force)))
+
+          Write-Host "[RESULT] Unassigned Tasks:"
+          foreach ($task in $unassigned.result) {
+            Write-Host "- $($task.number): $($task.short_description)"
+          }
+
+          # Step 2: Fetch all change tasks
+          $endpoint2 = "$env:SERVICENOW_INSTANCE_URL/api/now/table/change_task?sysparm_limit=10"
+          Write-Host "`n[INFO] Requesting all change tasks..."
+          $changeTasks = Invoke-RestMethod -Uri $endpoint2 -Method Get -Headers @{Accept="application/json"} -Credential (New-Object System.Management.Automation.PSCredential($env:SERVICENOW_USERNAME,(ConvertTo-SecureString $env:SERVICENOW_PASSWORD -AsPlainText -Force)))
+
+          Write-Host "[RESULT] Change Tasks:"
+          foreach ($task in $changeTasks.result) {
+            Write-Host "- $($task.number): $($task.short_description)"
+          }
+
+          # Step 3: Filter tasks not assigned to autooctopus
+          Write-Host "`n[INFO] Filtering tasks not assigned to 'autooctopus'..."
+          $filteredTasks = @()
+          foreach ($task in $changeTasks.result) {
+            if ($task.assigned_to.display_value.ToLower() -ne "autooctopus") {
+              $filteredTasks += $task
+            }
+          }
+
+          Write-Host "[INFO] Found $($filteredTasks.Count) tasks not assigned to autooctopus."
+          foreach ($task in $filteredTasks) {
+            Write-Host "- $($task.number): $($task.short_description)"
+          }
+
+          # Step 4: Print scheduling placeholder
+          if ($filteredTasks.Count -gt 0) {
+            Write-Host "`n[INFO] Placeholder: You would now schedule these tasks via Octopus Deploy API..."
+            # TODO: Add Octopus logic with API Key from $env:OCTOPUS_API_KEY
+          } else {
+            Write-Host "`n[INFO] No tasks to schedule."
+          }
