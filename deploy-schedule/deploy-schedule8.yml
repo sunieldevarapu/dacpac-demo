@@ -21,21 +21,10 @@ jobs:
       - name: Schedule Tasks from ServiceNow
         shell: pwsh
         run: |
+          # Disable SSL certificate validation
+          [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
-          # Disable SSL certificate validation (for self-signed certs)
-          Add-Type @"
-          using System.Net;
-          using System.Security.Cryptography.X509Certificates;
-          public class TrustAllCertsPolicy : ICertificatePolicy {
-              public bool CheckValidationResult(
-                  ServicePoint srvPoint, X509Certificate certificate,
-                  WebRequest request, int certificateProblem) {
-                  return true;
-              }
-          }
-          "@
-          [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
-          
+                  
           function Convert-ToCentralTime($utcTime, $addDelta) {
             $dt = [datetime]::ParseExact($utcTime, "yyyy-MM-dd HH:mm:ss", $null)
             if ($addDelta) { $dt = $dt.AddMinutes(30) }
