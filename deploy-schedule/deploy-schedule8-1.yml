@@ -67,3 +67,71 @@ jobs:
           } else {
             Write-Host "`n[INFO] No tasks to schedule."
           }
+
+                - name: Schedule and Authorize Deployments (Steps 4–7)
+        shell: pwsh
+        run: |
+          Write-Host "`n[STEP 4] Scheduling tasks not assigned to autooctopus..."
+          foreach ($task in $filteredTasks) {
+            Write-Host "[INFO] Scheduling Task $($task.number): $($task.short_description)"
+            # This is a placeholder where you'd call the Octopus API for scheduling if required.
+            # Use $task.planned_start_date, $task.short_description, etc.
+          }
+          Write-Host "[INFO] Scheduling simulated (actual API call not implemented)."
+
+          Write-Host "`n[STEP 5] Fetching queued deployments from Octopus Deploy..."
+          $queuedDeployments = Invoke-RestMethod `
+            -Uri "$env:OCTOPUS_BASE_URL/api/tasks?take=999" `
+            -Headers @{ "X-Octopus-ApiKey" = $env:OCTOPUS_API_KEY } `
+            -Method Get -SkipCertificateCheck
+
+          Write-Host "[INFO] Retrieved $($queuedDeployments.Items.Count) total deployments."
+
+          # Filter: queued, not canceled, prod, not release approval
+          $filteredDeployments = $queuedDeployments.Items | Where-Object {
+            $_.State -eq "Queued" -and
+            $_.State -ne "Canceled" -and
+            $_.Description -notlike "*Release Approval*" -and
+            $_.Description -like "*Prod*"
+          }
+          Write-Host "[INFO] Filtered to $($filteredDeployments.Count) qualifying queued deployments."
+
+          Write-Host "`n[STEP 6] Filtering tasks assigned to autooctopus..."
+          $assignedToAuto = @()
+          foreach ($task in $changeTasks.result) {
+            if ($task.assigned_to.display_value -and $task.assigned_to.display_value.ToLower() -eq "autooctopus") {
+              $assignedToAuto += $task
+            }
+          }
+          Write-Host "[INFO] Found $($assignedToAuto.Count) tasks assigned to autooctopus."
+
+          Write-Host "`n[STEP 7] Authorizing deployments..."
+          foreach ($deployment in $filteredDeployments) {
+            $found = $false
+            $deploymentRelease = $deployment.Description -replace ".*?(\d+\.\d+).*", '$1'
+            $deploymentTime = [datetime]::Parse($deployment.QueueTime).ToLocalTime().ToString("yyyy-MM-ddTHH:mm:ss")
+
+            foreach ($snowItem in $assignedToAuto) {
+              $snowTime = [datetime]::Parse($snowItem.planned_start_date).ToLocalTime().ToString("yyyy-MM-ddTHH:mm:ss")
+              $snowDesc = $snowItem.short_description
+
+              if ($snowDesc -like "*$deploymentRelease*" -and $snowTime -eq $deploymentTime) {
+                $found = $true
+                break
+              }
+            }
+
+            if (-not $found) {
+              Write-Host "[WARN] No matching ServiceNow task for deployment '$($deployment.Description)'"
+              # You can cancel the deployment here if needed
+              # Example:
+              # $cancelUri = "$env:OCTOPUS_BASE_URL/api/tasks/$($deployment.Id)/cancel"
+              # Invoke-RestMethod -Uri $cancelUri -Headers @{ "X-Octopus-ApiKey" = $env:OCTOPUS_API_KEY } -Method Post -SkipCertificateCheck
+              Write-Host "[INFO] Deployment would be cancelled (simulated)."
+            } else {
+              Write-Host "[INFO] Deployment '$($deployment.Description)' is authorized."
+            }
+          }
+
+          Write-Host "`n[✅ PROCESS COMPLETE] $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")"
+
