@@ -137,3 +137,16 @@ $headers = @{
 # Make the API call
 $changeTasks = Invoke-RestMethod -Uri "$env:SERVICENOW_INSTANCE_URL/api/now/table/change_task?sysparm_limit=10" -Headers $headers
 
+===============================================================================
+
+
+# Try to extract a release number from the description
+$releaseMatch = $desc -split " " | Where-Object { $_ -match "^\d+\.\d+\.\d+.*" }
+
+if ($releaseMatch -and $releaseMatch.Count -gt 0) {
+    $release = $releaseMatch[0]
+} else {
+    $webexMessage += "**Unable to extract release number.**`n"
+    Post-ToWebex $webexMessage
+    continue
+}
