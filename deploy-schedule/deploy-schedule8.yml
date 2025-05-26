@@ -1,0 +1,124 @@
+name: Schedule ServiceNow Tasks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  schedule-tasks:
+    runs-on: windows-latest
+    env:
+      SERVICENOW_INSTANCE_URL: https://zilvertondev.service-now.com
+      SERVICENOW_USERNAME: ${{ secrets.SERVICENOW_USERNAME }}
+      SERVICENOW_PASSWORD: ${{ secrets.SERVICENOW_PASSWORD }}
+      OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY }}
+      OCTOPUS_BASE_URL: https://octopusdeploydev.silver.com
+      OCTOPUS_ENV_ID: Environments-14
+      WEBEX_URL: https://webexapis.com/v1/messages
+      WEBEX_ROOM: 703b8fb0-15f0-11ee-b55b-2f8ddf8a82f4
+      WEBEX_BEARER: ${{ secrets.WEBEX_BEARER }}
+
+    steps:
+      - name: Schedule Tasks from ServiceNow
+        shell: pwsh
+        run: |
+          function Convert-ToCentralTime($utcTime, $addDelta) {
+            $dt = [datetime]::ParseExact($utcTime, "yyyy-MM-dd HH:mm:ss", $null)
+            if ($addDelta) { $dt = $dt.AddMinutes(30) }
+            return $dt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss")
+          }
+
+          function Post-ToWebex($message) {
+            $headers = @{ Authorization = "Bearer $env:WEBEX_BEARER" }
+            $body = @{ roomId = "$env:WEBEX_ROOM"; markdown = $message }
+            Invoke-RestMethod -Uri $env:WEBEX_URL -Method Post -Headers $headers -Body $body
+          }
+
+          $cred = New-Object System.Management.Automation.PSCredential($env:SERVICENOW_USERNAME, (ConvertTo-SecureString $env:SERVICENOW_PASSWORD -AsPlainText -Force))
+          $headers = @{ Accept = "application/json" }
+
+          Write-Host "`n[INFO] Fetching change tasks..."
+          $changeTasks = Invoke-RestMethod -Uri "$env:SERVICENOW_INSTANCE_URL/api/now/table/change_task?sysparm_limit=10" -Headers $headers -Authentication Basic -Credential $cred
+
+          $notAssigned = $changeTasks.result | Where-Object { $_.assigned_to.display_value -ne "autooctopus" }
+
+          foreach ($task in $notAssigned) {
+            $desc = $task.short_description
+            $number = $task.number
+            $plannedStart = $task.planned_start_date
+
+            $startTime = Convert-ToCentralTime $plannedStart $false
+            $endTime = Convert-ToCentralTime $plannedStart $true
+
+            $webexMessage = "ServiceNow Item: _$number_`nTime: _$startTime CST - $endTime CST_`nDescription: _$desc_`n"
+
+            if ($desc.ToUpper().Contains("SKIP")) {
+              $webexMessage += "**Found override keyword SKIP.**`n- Deployment NOT scheduled.`n"
+              Post-ToWebex $webexMessage
+              continue
+            }
+
+            if ($desc.ToUpper().Contains("MANUAL")) {
+              $webexMessage += "**Found override keyword MANUAL.**`n- Please assign manually.`n"
+              Post-ToWebex $webexMessage
+              continue
+            }
+
+            # Simulate extracting release number (e.g., 2023.4.0.246)
+            $release = ($desc -split " " | Where-Object { $_ -match "^\d+\.\d+\.\d+.*" })[0]
+            if (-not $release) {
+              $webexMessage += "**Unable to extract release number.**`n"
+              Post-ToWebex $webexMessage
+              continue
+            }
+
+            # Get Octopus projects
+            $octoHeaders = @{ "X-Octopus-ApiKey" = "$env:OCTOPUS_API_KEY" }
+            $projects = Invoke-RestMethod -Uri "$env:OCTOPUS_BASE_URL/api/projects?take=999" -Headers $octoHeaders -UseBasicParsing
+            $project = $projects.Items | Where-Object { $desc.ToUpper().Contains($_.Name.ToUpper()) }
+
+            if (-not $project) {
+              $webexMessage += "**Project not found in Octopus.**`n"
+              Post-ToWebex $webexMessage
+              continue
+            }
+
+            # Get release
+            $releases = Invoke-RestMethod -Uri "$env:OCTOPUS_BASE_URL/api/projects/$($project.Id)/releases?take=999" -Headers $octoHeaders -UseBasicParsing
+            $releaseObj = $releases.Items | Where-Object { $_.Version -eq $release }
+
+            if (-not $releaseObj) {
+              $webexMessage += "**Release $release not found in Octopus.**`n"
+              Post-ToWebex $webexMessage
+              continue
+            }
+
+            # Check if already scheduled
+            $tasks = Invoke-RestMethod -Uri "$env:OCTOPUS_BASE_URL/api/tasks" -Headers $octoHeaders -UseBasicParsing
+            $alreadyScheduled = $tasks.Items | Where-Object { $_.Description -match $release -and $_.State -eq "Queued" }
+
+            if ($alreadyScheduled) {
+              $webexMessage += "**Release already scheduled.**`n"
+              Post-ToWebex $webexMessage
+              continue
+            }
+
+            # Schedule deployment
+            $deployment = @{
+              ReleaseId = $releaseObj.Id
+              ProjectId = $releaseObj.ProjectId
+              ChannelId = $releaseObj.ChannelId
+              EnvironmentId = "$env:OCTOPUS_ENV_ID"
+              QueueTime = $startTime
+              QueueTimeExpiry = $endTime
+            }
+
+            $response = Invoke-RestMethod -Uri "$env:OCTOPUS_BASE_URL/api/deployments" -Method Post -Headers $octoHeaders -Body ($deployment | ConvertTo-Json -Depth 5) -ContentType "application/json"
+
+            if ($response.Id) {
+              $webexMessage += "**Deployment scheduled successfully.**`n"
+            } else {
+              $webexMessage += "**Failed to schedule deployment.**`n"
+            }
+
+            Post-ToWebex $webexMessage
+          }
