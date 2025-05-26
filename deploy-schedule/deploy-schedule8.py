@@ -67,17 +67,6 @@ class _UTCclass(BaseTzInfo):
 utc: _UTCclass
 UTC: _UTCclass
 
-#def timezone(zone: str) -> _UTCclass | StaticTzInfo | DstTzInfo: ...
-
-# class _FixedOffset(datetime.tzinfo):
-#     zone: ClassVar[None]
-#     def __init__(self, minutes: int) -> None: ...
-#     def utcoffset(self, dt: Any) -> timedelta | None: ...
-#     def dst(self, dt: Any) -> timedelta: ...
-#     def tzname(self, dt: Any) -> None: ...
-#     def localize(self, dt: datetime, is_dst: bool | None = False) -> datetime: ...
-#     def normalize(self, dt: datetime, is_dst: bool | None = False) -> datetime: ...
-
 def FixedOffset(offset: int, _tzinfos: dict[int, _FixedOffset] = {}) -> _UTCclass | _FixedOffset: ...
 
 all_timezones: list[str]
@@ -847,156 +836,6 @@ def schedule(snow_items=list) -> bool:
                     post_to_webex(message=webex_message)
                     continue
 
-def queued_deployments() -> list:
-    """Retrieves queued deployments from Octopus Deploy"""
-
-    # retrieve queued deployments
-    results = requests.get(
-        url=f"{scheduler_config['OctopusDeployBaseUrl']}{scheduler_config['TasksEndpoint']}?take=999",
-        headers={"X-Octopus-ApiKey": f"{scheduler_config['OctopusDeployApiKey']}"},
-        verify=False,
-    )
-
-    # we only want to results if code is 200, otherwise return empty list
-    if results.status_code == 200:
-        results = results.json()
-        return results["Items"]
-    else:
-        log(results.text)
-        return []
-    
-def filter_deployments(deployments: list) -> list:
-    """
-    Filters Octopus Deploy Deployments to specified critera
-        Parameters:
-            deployments: list of deployments from Octopus Deploy
-    """
-    return [
-        deployment
-        for deployment in deployments
-        if deployment["State"] == "Queued"
-        and deployment["State"] != "Canceled"
-        and "Release Approval" not in deployment["Description"]
-        and "Prod" in deployment["Description"]
-    ]
-
-def format_od_time(time_string) -> str:
-    """Converts the Octopus Deploy timestamp to mach that of ServiceNOw
-
-    Keyword arguments:
-    time_string -- datetime string
-    Return: str
-    """
-
-    time_string = time_string.replace(".000", "")
-    return (
-        datetime.strptime(time_string, "%Y-%m-%dT%H:%M:%S%z")
-        .astimezone(pytz.timezone("US/Central"))
-        .isoformat()
-    )
-    
-def authorize_deployments(snow_items: list, deployments: list) -> None:
-    """
-    Verifies that each queued deployment in OD has a SNOW item that corresponds with the version number
-        Parameters:
-            snow_items: List of items from SNOW
-            deployments: Dict of OD queued deployments
-    """
-
-    # list comprehension to filter out nonessential task items that do not relate to deployments
-    # we need this to be as specific as possible so that we do not cancel any queued tasks that are
-    # not production deployments with no change tickets
-    deployments = filter_deployments(deployments)
-
-    # we only want to loop through if we have deployments
-    if deployments:
-        # placeholder for the webex message
-        webex_message = ""
-
-        for deployment in deployments:
-            # no deployment has yet been found so set initially to false
-            found = False
-
-            release_number = extract_release(deployment["Description"]).upper()
-            project_name = find_project_name(deployment["Description"]).upper()
-
-            # now that we have the release we need to check for a change task
-            if snow_items:
-                for snow_item in snow_items:
-                    # we need to convert the date and time of OD and SNOW to match either other
-                    deployment_time = format_od_time(
-                        time_string=deployment["QueueTime"]
-                    )
-                    snow_time = to_central_time(
-                        snow_item["planned_start_date"], add_delta=False
-                    )
-                    snow_release_number = extract_release(
-                        snow_item["short_description"]
-                    )
-                    snow_project_name = find_project_name(
-                        snow_item["short_description"]
-                    )
-
-                    # if a release number and project is found set it to true
-                    if project_name == snow_project_name.upper():
-                        if release_number == snow_release_number.upper():
-                            if deployment_time == snow_time:
-                                found = True
-                                break
-
-            # if we go through the entire collection of service now items and do not find a release then it is
-            # unauthorized deployment and needs to be canceled
-            if not found:
-                if cancel_deployment(id=deployment["Id"]):
-                    webex_message = (
-                        f"Deployment **{deployment['Description']}** was cancelled because there was no Change Task matching the deployment info in Octopus Deploy. \n"
-                        "   - If a Change or Task has been pulled and then added back into the ServiceNow queue it will automatically be rescheduled within 2 run cycles. \n"
-                        "   - If the deployment time or release number on the Change Task has changed it will automatically be rescheduled. \n"
-                        "_No further action needed._ \n"
-                    )
-                else:
-                    webex_message = (
-                        f"**{deployment['Description']}** does not have an associated Change Task. Attemped to cancel but encountered an error. \n"
-                        "_Possible solutions:_ \n"
-                        "   - Associate a Change Task with this release. \n"
-                        "   - Cancel deployment manually. \n"
-                    )
-
-                post_to_webex(message=webex_message)
-
-                # assign ticket back to queue if there is one because there is no valid change task when release numbers change
-                for snow_item in snow_items:
-                    if project_name in str(snow_item["short_description"]).upper():
-                        assign_snow_item(snow_item=snow_item, assign_to_queue=True)
-
-def cancel_deployment(id: str) -> bool:
-    """
-    Cancels deployment if there is no SNOW ticket
-        Parameters:
-            id: id of OD deployment
-    """
-    if id:
-        try:
-            results = requests.post(
-                url=f"{scheduler_config['OctopusDeployBaseUrl']}{scheduler_config['TasksEndpoint']}/{id}/cancel",
-                headers={
-                    "X-Octopus-ApiKey": f"{scheduler_config['OctopusDeployApiKey']}"
-                },
-                verify=False,
-            )
-        except Exception as e:
-            error_string = str(e)
-            log(error_string)
-            return False
-
-        if results.status_code == 200:
-            return True
-        else:
-            log(results.text)
-            return False
-    else:
-        return False
-
 def export_to_file(data, filename):
     """
     Exports the given data to a human-readable text file.
@@ -1025,14 +864,14 @@ if __name__ == "__main__":
     results["Unassigned Tasks"] = unassigned_tasks
     print("\n[RESULT] Unassigned Tasks:")
     for task in unassigned_tasks.get("result", []):
-        print(f"- {task.get('number')} \n  {task.get('short_description')}")
+        print(f"- {task.get('number')} | {task.get('short_description')}")
 
     # Step 2: Get all change tasks
     change_tasks = get_change_tasks()
     results["Change Tasks"] = change_tasks
     print("\n[RESULT] Change Tasks:")
     for task in change_tasks.get("result", []):
-        print(f"- {task.get('number')} \n  {task.get('short_description')}")
+        print(f"- {task.get('number')} | {task.get('short_description')}")
 
     # Step 3: Filter tasks not assigned to autooctopus
     print("\n[INFO] Filtering tasks not assigned to 'autooctopus'...")
@@ -1041,32 +880,44 @@ if __name__ == "__main__":
         if task.get("assigned_to", {}).get("display_value", "").lower() != "autooctopus"
     ]
     print(f"[INFO] Found {len(not_assigned_to_autooctopus)} tasks not assigned to autooctopus.")
+
+    #Print the list of task numbers and descriptions
     for task in not_assigned_to_autooctopus:
         print(f"- Task Number: {task.get('number', 'N/A')}")
-        print(f"  Short Description: {task.get('short_description', 'N/A')}\n")
+        print(f" Short Description: {task.get('short_description', 'N/A')}")
+        print()
 
     # Step 4: Schedule those tasks
     if not_assigned_to_autooctopus:
         print("\n[INFO] Scheduling change tasks...")
+        for task in not_assigned_to_autooctopus:
+           print(f"- {task.get('number', 'N/A')}: {task.get('short_description', 'N/A')}") 
         schedule(snow_items=not_assigned_to_autooctopus)
         print("[INFO] Scheduling complete.")
     else:
         print("[INFO] No tasks to schedule.")
+    
+    #export_to_file(results, "servicenow_output2.txt")
 
-    # Step 5: Get queued deployments
-    deployments = queued_deployments()
-    print(f"\n[INFO] Retrieved {len(deployments)} queued deployments.")
+# # Main execution
+# if __name__ == "__main__":
+#     results = {}
+#     unassigned_tasks = get_unassigned_tasks()
+#     results["Unassigned Tasks"] = unassigned_tasks
+#     print("[RESULT] Unassigned Tasks:\n", unassigned_tasks)
 
-    # Step 6: Get tasks assigned to autooctopus
-    assigned_tasks = [
-        task for task in change_tasks.get("result", [])
-        if task.get("assigned_to", {}).get("display_value", "").lower() == "autooctopus"
-    ]
-    print(f"\n[INFO] Found {len(assigned_tasks)} tasks assigned to 'autooctopus'.")
+#     change_tasks = get_change_tasks()
+#     results["Change Tasks"] = change_tasks
+#     print("[RESULT] Change Tasks:\n", change_tasks)
 
-    # Step 7: Authorize deployments
-    authorize_deployments(snow_items=assigned_tasks, deployments=deployments)
-    print("\n[INFO] Deployment authorization complete.")
-
-    print(f"\n[PROCESS FINISHED] {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}")
-
+#     #export_to_file(results, "servicenow_output1.txt")
+#     # Get tasks not assigned to AUTOOCTOPUS
+#     unassigned_tasks = change_tasks(assigned_to=False)
+#     print(f\"GET TASKS {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
+#     print('--------------------')
+    
+#     # Schedule change tasks
+#     if len(unassigned_tasks) > 0:
+#         schedule(snow_items=unassigned_tasks)    
+#     print(f\"SCHEDULE {datetime.now().astimezone(pytz.timezone('US/Central')).strftime('%Y-%m-%d %H:%M CST')}\")
+#     print('--------------------')
