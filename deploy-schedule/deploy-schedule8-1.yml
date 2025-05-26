@@ -44,15 +44,21 @@ jobs:
           Write-Host "`n[INFO] Filtering tasks not assigned to 'autooctopus'..."
           $filteredTasks = @()
           foreach ($task in $changeTasks.result) {
-            if ($task.assigned_to.display_value.ToLower() -ne "autooctopus") {
+          $assignedTo = $task.assigned_to.display_value
+            if ($assignedTo -and $assignedTo.ToLower() -ne "autooctopus") {
+              $filteredTasks += $task
+              }
+            elseif (-not $assignedTo) {
               $filteredTasks += $task
             }
-          }
+            }
 
-          Write-Host "[INFO] Found $($filteredTasks.Count) tasks not assigned to autooctopus."
-          foreach ($task in $filteredTasks) {
-            Write-Host "- $($task.number): $($task.short_description)"
-          }
+            Write-Host "[INFO] Found $($filteredTasks.Count) tasks not assigned to autooctopus."
+            foreach ($task in $filteredTasks) {
+            Write-Host "- Task Number: $($task.number)"
+            Write-Host "  Short Description: $($task.short_description)"
+            }
+
 
           # Step 4: Print scheduling placeholder
           if ($filteredTasks.Count -gt 0) {
