@@ -122,3 +122,18 @@ jobs:
 
             Post-ToWebex $webexMessage
           }
+
+          ========================================================================
+
+          # Construct Basic Auth header
+$pair = "$env:SERVICENOW_USERNAME:$env:SERVICENOW_PASSWORD"
+$bytes = [System.Text.Encoding]::UTF8.GetBytes($pair)
+$encodedCreds = [Convert]::ToBase64String($bytes)
+$headers = @{
+  "Authorization" = "Basic $encodedCreds"
+  "Accept" = "application/json"
+}
+
+# Make the API call
+$changeTasks = Invoke-RestMethod -Uri "$env:SERVICENOW_INSTANCE_URL/api/now/table/change_task?sysparm_limit=10" -Headers $headers
+
