@@ -131,6 +131,51 @@ jobs:
             } else {
               Write-Host "[INFO] Deployment '$($deployment.Description)' is authorized."
             }
+
+
+            =============================================================================================
+
+            - name: Schedule Deployment in Octopus Deploy
+  shell: pwsh
+  run: |
+    # Set up variables — replace these with dynamically extracted values
+    $releaseId = "Releases-123"
+    $projectId = "Projects-789"
+    $channelId = "Channels-101"
+    $environmentId = "Environments-145"
+
+    # Use planned start from ServiceNow (example format: 2025-05-27 13:00:00)
+    $plannedStart = [datetime]::ParseExact("2025-05-27 13:00:00", "yyyy-MM-dd HH:mm:ss", $null)
+    
+    # Convert to ISO 8601 with timezone (e.g., Central Time)
+    $tz = [System.TimeZoneInfo]::FindSystemTimeZoneById("Central Standard Time")
+    $queueTime = [System.TimeZoneInfo]::ConvertTime($plannedStart, $tz).ToString("yyyy-MM-ddTHH:mm:sszzz")
+    $queueTimeExpiry = [System.TimeZoneInfo]::ConvertTime($plannedStart.AddMinutes(30), $tz).ToString("yyyy-MM-ddTHH:mm:sszzz")
+
+    Write-Host "[DEBUG] QueueTime: $queueTime"
+    Write-Host "[DEBUG] QueueTimeExpiry: $queueTimeExpiry"
+
+    # Build deployment payload
+    $deploymentPayload = @{
+      ReleaseId = $releaseId
+      ProjectId = $projectId
+      ChannelId = $channelId
+      EnvironmentId = $environmentId
+      QueueTime = $queueTime
+      QueueTimeExpiry = $queueTimeExpiry
+    } | ConvertTo-Json -Depth 10
+
+    Write-Host "[INFO] Scheduling deployment in Octopus Deploy..."
+
+    $response = Invoke-RestMethod `
+      -Uri "$env:OCTOPUS_BASE_URL/api/deployments" `
+      -Method Post `
+      -Headers @{ "X-Octopus-ApiKey" = $env:OCTOPUS_API_KEY; "Content-Type" = "application/json" } `
+      -Body $deploymentPayload `
+      -SkipCertificateCheck
+
+    Write-Host "[SUCCESS] Deployment scheduled. Deployment ID: $($response.Id)"
+
           }
 
           Write-Host "`n[✅ PROCESS COMPLETE] $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")"
