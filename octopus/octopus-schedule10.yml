@@ -1,0 +1,91 @@
+name: Octopus Win GH Actions Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (leave empty for auto-versioning)'
+        required: false
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'Development'
+        type: choice
+        options:
+          - Development
+          - Test
+          - Production
+      project:
+        description: 'Project name in Octopus Deploy'
+        required: true
+      release_notes:
+        description: 'Release notes for this deployment'
+        required: false
+
+permissions:
+  # id-token: write
+  contents: write
+  packages: write
+
+env:
+  OCTOPUS_SERVER: ${{ vars.OCTOPUS_DEPLOY_BASE_URL }}
+  OCTOPUS_CLI_SKIP_TLS_VERIFICATION: 'true'
+  OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_DEPLOY_API_KEY }}
+  OCTOPUS_SPACE: 'Spaces-1'
+  PROJECT_NAME: 'Liquibase - Deploy - Demo'
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build-and-push:
+    runs-on: Windows-Runner
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Octopus CLI
+        uses: OctopusDeploy/install-octopus-cli-action@v3
+        with:
+          version: '*'
+
+      - name: Generate version
+        id: generate_version
+        run: |
+          if ([string]::IsNullOrEmpty("${{ github.event.inputs.version }}")) {
+            $version = "1.0.${{ github.run_number }}"
+          } else {
+            $version = "${{ github.event.inputs.version }}"
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Using version: $version"
+        shell: pwsh
+
+      - name: Create Octopus release
+        uses: OctopusDeploy/create-release-action@v3
+        id: create_release
+        with:
+          api_key: ${{ env.OCTOPUS_API_KEY }}
+          server: ${{ env.OCTOPUS_SERVER }}
+          space: ${{ env.OCTOPUS_SPACE }}
+          project: ${{ github.event.inputs.project }}
+          release_number: ${{ steps.generate_version.outputs.version }}
+          release_notes: ${{ github.event.inputs.release_notes }}
+
+      - name: Deploy Octopus release
+        uses: OctopusDeploy/deploy-release-action@v3
+        with:
+          api_key: ${{ env.OCTOPUS_API_KEY }}
+          server: ${{ env.OCTOPUS_SERVER }}
+          space: ${{ env.OCTOPUS_SPACE }}
+          project: ${{ github.event.inputs.project }}
+          release_number: ${{ steps.create_release.outputs.release_number }}
+          environments: ${{ github.event.inputs.environment }}
+
+      - name: Report deployment status
+        if: always()
+        run: |
+          if ("${{ job.status }}" -eq "success") {
+            Write-Host "Deployment of ${{ steps.create_release.outputs.release_number }} to ${{ github.event.inputs.environment }} was successful"
+          } else {
+            Write-Host "Deployment failed. Please check the Octopus Deploy server for more details."
+          }
+        shell: pwsh
