@@ -30,3 +30,25 @@ print("SNOW_PASSWORD:", scheduler_config["ApiAuthentication"]["Password"])
 
 # Log authentication attempt
 log(f"Attempting ServiceNow API connection to {scheduler_config['BaseUrl']} as user {scheduler_config['ApiAuthentication']['Username']}")
+
+
+=============================================================================================
+
+# Set your ServiceNow instance URL and credentials
+$baseUrl = "https://<your-instance>.service-now.com"
+$username = "your_username"
+$password = "your_password"
+
+# Create a credential object
+$securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+$credential = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
+
+# Make a test API call to the change_task table
+$response = Invoke-RestMethod -Uri "$baseUrl/api/now/table/change_task?sysparm_limit=1" `
+                              -Method Get `
+                              -Credential $credential `
+                              -Headers @{ "Accept" = "application/json" }
+
+# Display the response
+$response
+
