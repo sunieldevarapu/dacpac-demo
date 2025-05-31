@@ -52,3 +52,62 @@ $response = Invoke-RestMethod -Uri "$baseUrl/api/now/table/change_task?sysparm_l
 # Display the response
 $response
 
+=======================================================================================
+
+servicenow_auth.ps1
+
+<#
+.SYNOPSIS
+    Tests ServiceNow API authentication using Basic Auth.
+
+.DESCRIPTION
+    This script connects to the ServiceNow instance using Basic Authentication
+    and retrieves a sample record from the change_task table.
+
+.PARAMETER InstanceUrl
+    The base URL of your ServiceNow instance (e.g., https://your-instance.service-now.com)
+
+.PARAMETER Username
+    The ServiceNow username with API access.
+
+.PARAMETER Password
+    The ServiceNow password for the user.
+
+.EXAMPLE
+    .\Test-ServiceNowAuth.ps1 -InstanceUrl "https://your-instance.service-now.com" -Username "admin" -Password "your_password"
+#>
+
+param (
+    [Parameter(Mandatory = $true)]
+    [string]$InstanceUrl,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Username,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Password
+)
+
+# Convert password to secure string
+$securePassword = ConvertTo-SecureString $Password -AsPlainText -Force
+$credential = New-Object System.Management.Automation.PSCredential ($Username, $securePassword)
+
+# Construct API URL
+$apiUrl = "$InstanceUrl/api/now/table/change_task?sysparm_limit=1"
+
+# Set headers
+$headers = @{
+    "Accept" = "application/json"
+}
+
+Write-Host "Testing authentication to $InstanceUrl as $Username..."
+
+try {
+    $response = Invoke-RestMethod -Uri $apiUrl -Method Get -Credential $credential -Headers $headers
+    Write-Host "✅ Authentication successful. Sample response:"
+    $response.result | Format-List
+} catch {
+    Write-Host "❌ Authentication failed. Error details:"
+    Write-Host $_.Exception.Message
+}
+
